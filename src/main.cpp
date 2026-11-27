@@ -24,6 +24,8 @@ namespace {
     bool g_towerLevelBypassEnabled = false;
     bool g_pauseBufferBypassEnabled = false;
     bool g_freeShoppingEnabled = false;
+    bool g_practiceModeEnabled = false;
+    bool g_ghostEffectEnabled = true;
     bool g_tpsInternalTick = false;
     double g_tpsAccumulator = 0.0;
     unsigned g_buttonColorIndex = 0;
@@ -69,6 +71,8 @@ protected:
     CCMenuItemLabel* m_pauseBufferBypassToggle = nullptr;
     CCMenuItemLabel* m_freeShoppingToggle = nullptr;
     CCMenuItemLabel* m_instantCompleteButton = nullptr;
+    CCMenuItemLabel* m_practiceModeButton = nullptr;
+    CCMenuItemLabel* m_ghostEffectButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -143,6 +147,18 @@ protected:
         apply->setPosition({0.f, -45.f});
         menu->addChild(apply);
 
+        m_practiceModeButton = CCMenuItemLabel::create(makeLabel("PRACTICE MODE: OFF"), this,
+            menu_selector(UltimateMenuPopup::onTogglePracticeMode));
+        m_practiceModeButton->setTag(16);
+        m_practiceModeButton->setScale(0.55f);
+        menu->addChild(m_practiceModeButton);
+
+        m_ghostEffectButton = CCMenuItemLabel::create(makeLabel("GHOST EFFECT: ON"), this,
+            menu_selector(UltimateMenuPopup::onToggleGhostEffect));
+        m_ghostEffectButton->setTag(17);
+        m_ghostEffectButton->setScale(0.55f);
+        menu->addChild(m_ghostEffectButton);
+
         m_colorCycle = CCMenuItemLabel::create(makeLabel("BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
         m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); menu->addChild(m_colorCycle);
         m_opacityCycle = CCMenuItemLabel::create(makeLabel("BUTTON OPACITY"), this, menu_selector(UltimateMenuPopup::onCycleOpacity));
@@ -211,7 +227,7 @@ protected:
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
-            bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
+            bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
                            (tab == 1 && tag >= 40 && tag <= 47) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
@@ -235,6 +251,8 @@ protected:
         m_jumpToggle->setString(Mod::get()->getSettingValue<bool>("jump-effect") ? "Jump effect: ON" : "Jump effect: OFF");
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
+        if (m_practiceModeButton) m_practiceModeButton->setString(g_practiceModeEnabled ? "PRACTICE MODE: ON" : "PRACTICE MODE: OFF");
+        if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
@@ -281,6 +299,28 @@ protected:
 
     void onToggleFreeShopping(CCObject*) {
         g_freeShoppingEnabled = !g_freeShoppingEnabled;
+        this->refreshLabels();
+    }
+
+    void onTogglePracticeMode(CCObject*) {
+        auto layer = PlayLayer::get();
+        if (!layer) {
+            FLAlertLayer::create("Practice Mode", "Open a level first.", "OK")->show();
+            return;
+        }
+        g_practiceModeEnabled = !g_practiceModeEnabled;
+        layer->togglePracticeMode(g_practiceModeEnabled);
+        this->refreshLabels();
+    }
+
+    void onToggleGhostEffect(CCObject*) {
+        auto layer = PlayLayer::get();
+        if (!layer) {
+            FLAlertLayer::create("Ghost Effect", "Open a level first.", "OK")->show();
+            return;
+        }
+        g_ghostEffectEnabled = !g_ghostEffectEnabled;
+        layer->toggleGhostEffect(g_ghostEffectEnabled);
         this->refreshLabels();
     }
 
