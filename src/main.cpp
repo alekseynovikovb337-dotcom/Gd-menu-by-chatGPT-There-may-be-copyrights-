@@ -4,8 +4,71 @@
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
+#include <fstream>
+#include <filesystem>
+#include <cstdint>
+#include <vector>
+
 
 using namespace geode::prelude;
+
+namespace {
+    struct Re4Input {
+        uint64_t frame;
+        uint8_t down;
+        int32_t button;
+        uint8_t player2;
+    };
+    struct Re4Physics {
+        uint64_t frame;
+        float x;
+        float y;
+        double yAccel;
+        uint8_t player2;
+    };
+    std::vector<Re4Input> g_re4Inputs;
+    std::vector<Re4Physics> g_re4Physics;
+    uint64_t g_re4Frame = 0;
+    bool g_re4Recording = false;
+
+    template <class T>
+    void writeLE(std::ofstream& out, T value) {
+        auto bytes = reinterpret_cast<const char*>(&value);
+        out.write(bytes, sizeof(T));
+    }
+
+    bool saveRe4Replay() {
+        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+        std::ofstream out(path, std::ios::binary);
+        if (!out) return false;
+        out.write("RE4", 3);
+        writeLE<float>(out, 240.0f);
+        writeLE<uint64_t>(out, static_cast<uint64_t>(g_re4Physics.size()));
+        for (auto const& p : g_re4Physics) {
+            writeLE<uint64_t>(out, p.frame);
+            writeLE<float>(out, p.x);
+            writeLE<float>(out, p.y);
+            writeLE<double>(out, p.yAccel);
+            writeLE<uint8_t>(out, p.player2);
+        }
+        writeLE<uint64_t>(out, static_cast<uint64_t>(g_re4Inputs.size()));
+        for (auto const& i : g_re4Inputs) {
+            writeLE<uint64_t>(out, i.frame);
+            writeLE<uint8_t>(out, i.down);
+            writeLE<int32_t>(out, i.button);
+            writeLE<uint8_t>(out, i.player2);
+        }
+        return out.good();
+    }
+
+    void resetRe4Recorder() {
+        g_re4Inputs.clear();
+        g_re4Physics.clear();
+        g_re4Frame = 0;
+    }
+}
 
 class UltimateMenuPopup : public geode::Popup {
 protected:
@@ -16,6 +79,7 @@ protected:
     CCMenuItemLabel* m_deathToggle = nullptr;
     CCMenuItemLabel* m_noclipToggle = nullptr;
     geode::ScrollLayer* m_scroll = nullptr;
+    CCMenuItemLabel* m_recordToggle = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
@@ -85,6 +149,18 @@ protected:
         apply->setPosition({0.f, -45.f});
         menu->addChild(apply);
 
+        m_recordToggle = CCMenuItemLabel::create(makeLabel("RE4 recording: OFF"), this,
+            menu_selector(UltimateMenuPopup::onToggleRecording));
+        m_recordToggle->setScale(0.55f);
+        m_recordToggle->setPosition({0.f, -85.f});
+        menu->addChild(m_recordToggle);
+
+        auto saveReplay = CCMenuItemLabel::create(makeLabel("SAVE .RE4"), this,
+            menu_selector(UltimateMenuPopup::onSaveReplay));
+        saveReplay->setScale(0.55f);
+        saveReplay->setPosition({0.f, -125.f});
+        menu->addChild(saveReplay);
+
         this->refreshLabels();
         return true;
     }
@@ -95,6 +171,7 @@ protected:
         m_jumpToggle->setString(Mod::get()->getSettingValue<bool>("jump-effect") ? "Jump effect: ON" : "Jump effect: OFF");
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
+        if (m_recordToggle) m_recordToggle->setString(g_re4Recording ? "RE4 recording: ON" : "RE4 recording: OFF");
     }
 
     void onToggle(CCObject* sender) {
@@ -106,6 +183,35 @@ protected:
             case 4: Mod::get()->setSettingValue("noclip-enabled", !Mod::get()->getSettingValue<bool>("noclip-enabled")); break;
         }
         this->refreshLabels();
+    }
+
+    void onToggleRecording(CCObject*) {
+        if (!g_re4Recording) {
+            resetRe4Recorder();
+            g_re4Recording = true;
+            FLAlertLayer::create("RE4 Recorder", "Recording started. Play the level, then save the replay.", "OK")->show();
+        } else {
+            g_re4Recording = false;
+            FLAlertLayer::create("RE4 Recorder", "Recording stopped. Press SAVE .RE4 to export.", "OK")->show();
+        }
+        this->refreshLabels();
+    }
+
+    void onSaveReplay(CCObject*) {
+        if (g_re4Recording) {
+            g_re4Recording = false;
+            this->refreshLabels();
+        }
+        if (g_re4Inputs.empty()) {
+            FLAlertLayer::create("RE4 Recorder", "No inputs recorded yet. Start recording and play first.", "OK")->show();
+            return;
+        }
+        if (!saveRe4Replay()) {
+            FLAlertLayer::create("RE4 export failed", "Could not write the replay file. Check the Geode log.", "OK")->show();
+            return;
+        }
+        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
+        FLAlertLayer::create("RE4 saved", fmt::format("Saved {} inputs to:\n{}", g_re4Inputs.size(), path.string()), "OK")->show();
     }
 
     void onApplySpeed(CCObject*) {
@@ -158,6 +264,28 @@ class $modify(GDUltimateMenuLayer, MenuLayer) {
 };
 
 class $modify(GDUltimatePlayerObject, PlayerObject) {
+    bool pushButton(PlayerButton btn) {
+        bool result = PlayerObject::pushButton(btn);
+        if (g_re4Recording) {
+            auto pl = PlayLayer::get();
+            if (pl && (this == pl->m_player1 || this == pl->m_player2)) {
+                g_re4Inputs.push_back({g_re4Frame, 1, static_cast<int32_t>(btn), static_cast<uint8_t>(this == pl->m_player2)});
+            }
+        }
+        return result;
+    }
+
+    bool releaseButton(PlayerButton btn) {
+        bool result = PlayerObject::releaseButton(btn);
+        if (g_re4Recording) {
+            auto pl = PlayLayer::get();
+            if (pl && (this == pl->m_player1 || this == pl->m_player2)) {
+                g_re4Inputs.push_back({g_re4Frame, 0, static_cast<int32_t>(btn), static_cast<uint8_t>(this == pl->m_player2)});
+            }
+        }
+        return result;
+    }
+
     void update(float dt) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
@@ -173,6 +301,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
 class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
+        resetRe4Recorder();
+        g_re4Recording = false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         auto menu = CCMenu::create();
         if (!menu) return true;
@@ -186,6 +316,19 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         this->addChild(menu, 999);
         return true;
     }
+    void update(float dt) {
+        PlayLayer::update(dt);
+        if (g_re4Recording) {
+            ++g_re4Frame;
+            auto recordPhysics = [this](PlayerObject* player, bool p2) {
+                if (!player || player->m_isDead) return;
+                g_re4Physics.push_back({g_re4Frame, player->getPositionX(), player->getPositionY(), 0.0, static_cast<uint8_t>(p2)});
+            };
+            recordPhysics(m_player1, false);
+            recordPhysics(m_player2, true);
+        }
+    }
+
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
             player && (player == m_player1 || player == m_player2)) {
