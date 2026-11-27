@@ -297,7 +297,6 @@ protected:
         if (!m_itemsMenu) return;
         m_itemsMenu->setVisible(true);
         m_playerOnlyControls->setVisible(tab == 0);
-        m_playerOnlyControls->setEnabled(tab == 0);
         int row = 0;
         const float rowY[] = {96.f, 60.f, 24.f, -12.f, -48.f, -84.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
