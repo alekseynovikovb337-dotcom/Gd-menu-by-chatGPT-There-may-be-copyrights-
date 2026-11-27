@@ -41,6 +41,10 @@ namespace {
     bool g_noTrailEnabled = false;
     bool g_noPlayerGlowEnabled = false;
     bool g_forcePlatformerEnabled = false;
+    PlayerObject* g_platformerTrackedP1 = nullptr;
+    PlayerObject* g_platformerTrackedP2 = nullptr;
+    bool g_platformerOriginalP1 = false;
+    bool g_platformerOriginalP2 = false;
     bool g_waveTrailEnabled = true;
     bool g_cheatIndicatorEnabled = true;
     CCLabelBMFont* g_cheatIndicatorLabel = nullptr;
@@ -584,7 +588,19 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
         if (this->m_ghostTrail) this->m_ghostTrail->setVisible(!g_noTrailEnabled);
         if (this->m_waveTrail) this->m_waveTrail->setVisible(!g_noTrailEnabled && g_waveTrailEnabled);
         this->m_hasGlow = !g_noPlayerGlowEnabled;
-        if (g_forcePlatformerEnabled) this->m_isPlatformer = true;
+        if (auto pl = PlayLayer::get()) {
+            bool isP1 = this == pl->m_player1;
+            bool isP2 = this == pl->m_player2;
+            if (isP1 || isP2) {
+                auto& tracked = isP1 ? g_platformerTrackedP1 : g_platformerTrackedP2;
+                auto& original = isP1 ? g_platformerOriginalP1 : g_platformerOriginalP2;
+                if (tracked != this) {
+                    tracked = this;
+                    original = this->m_isPlatformer;
+                }
+                this->m_isPlatformer = g_forcePlatformerEnabled ? true : original;
+            }
+        }
         if (auto pl = PlayLayer::get()) {
             bool isP1 = this == pl->m_player1;
             bool isP2 = this == pl->m_player2;
@@ -662,7 +678,9 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
                 Mod::get()->getSettingValue<bool>("noclip-enabled") ||
                 g_tpsBypassEnabled || g_practiceModeEnabled || g_autoPracticeEnabled ||
                 g_autoRetryEnabled || g_autoClickerEnabled || g_noTrailEnabled ||
-                g_noPlayerGlowEnabled || g_forcePlatformerEnabled || g_freeShoppingEnabled;
+                g_noPlayerGlowEnabled || g_forcePlatformerEnabled || g_freeShoppingEnabled ||
+                g_hidePlayerEnabled || g_waveTrailEnabled == false || g_mainLevelBypassEnabled ||
+                g_sliderLimitBypassEnabled || g_towerLevelBypassEnabled || g_pauseBufferBypassEnabled;
             g_cheatIndicatorLabel->setVisible(g_cheatIndicatorEnabled && active);
         }
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
