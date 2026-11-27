@@ -519,9 +519,9 @@ class $modify(GDUltimatePauseBufferBypass, UILayer) {
         if (g_pauseBufferBypassEnabled && m_gameLayer) m_gameLayer->m_gameState.m_pauseCounter = 0;
         UILayer::onPause(sender);
     }
-    void handleKeypress(enumKeyCodes key, bool down) {
+    void handleKeypress(enumKeyCodes key, bool down, double timestamp) {
         if (g_pauseBufferBypassEnabled && m_gameLayer) m_gameLayer->m_gameState.m_pauseCounter = 0;
-        UILayer::handleKeypress(key, down);
+        UILayer::handleKeypress(key, down, timestamp);
     }
 };
 
