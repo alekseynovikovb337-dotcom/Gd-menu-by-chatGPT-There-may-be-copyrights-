@@ -38,6 +38,8 @@ namespace {
     bool g_autoClickerEnabled = false;
     float g_autoClickerTimer = 0.f;
     bool g_autoClickerPressed = false;
+    bool g_noTrailEnabled = false;
+    bool g_noPlayerGlowEnabled = false;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -82,6 +84,8 @@ protected:
     CCMenuItemLabel* m_hidePlayerButton = nullptr;
     CCMenuItemLabel* m_autoRetryButton = nullptr;
     CCMenuItemLabel* m_autoClickerButton = nullptr;
+    CCMenuItemLabel* m_noTrailButton = nullptr;
+    CCMenuItemLabel* m_noGlowButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -185,6 +189,10 @@ protected:
         m_autoRetryButton->setTag(20); m_autoRetryButton->setScale(0.55f); menu->addChild(m_autoRetryButton);
         m_autoClickerButton = CCMenuItemLabel::create(makeLabel("AUTO CLICKER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoClicker));
         m_autoClickerButton->setTag(21); m_autoClickerButton->setScale(0.55f); menu->addChild(m_autoClickerButton);
+        m_noTrailButton = CCMenuItemLabel::create(makeLabel("NO TRAIL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoTrail));
+        m_noTrailButton->setTag(22); m_noTrailButton->setScale(0.55f); menu->addChild(m_noTrailButton);
+        m_noGlowButton = CCMenuItemLabel::create(makeLabel("NO PLAYER GLOW: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoGlow));
+        m_noGlowButton->setTag(23); m_noGlowButton->setScale(0.55f); menu->addChild(m_noGlowButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -277,6 +285,8 @@ protected:
         if (m_hidePlayerButton) m_hidePlayerButton->setString(g_hidePlayerEnabled ? "HIDE PLAYER: ON" : "HIDE PLAYER: OFF");
         if (m_autoRetryButton) m_autoRetryButton->setString(g_autoRetryEnabled ? "AUTO RETRY: ON" : "AUTO RETRY: OFF");
         if (m_autoClickerButton) m_autoClickerButton->setString(g_autoClickerEnabled ? "AUTO CLICKER: ON" : "AUTO CLICKER: OFF");
+        if (m_noTrailButton) m_noTrailButton->setString(g_noTrailEnabled ? "NO TRAIL: ON" : "NO TRAIL: OFF");
+        if (m_noGlowButton) m_noGlowButton->setString(g_noPlayerGlowEnabled ? "NO PLAYER GLOW: ON" : "NO PLAYER GLOW: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -395,6 +405,16 @@ protected:
     void onToggleAutoPractice(CCObject*) {
         g_autoPracticeEnabled = !g_autoPracticeEnabled;
         if (auto layer = PlayLayer::get()) layer->togglePracticeMode(g_autoPracticeEnabled);
+        this->refreshLabels();
+    }
+
+    void onToggleNoTrail(CCObject*) {
+        g_noTrailEnabled = !g_noTrailEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleNoGlow(CCObject*) {
+        g_noPlayerGlowEnabled = !g_noPlayerGlowEnabled;
         this->refreshLabels();
     }
 
@@ -530,6 +550,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
     void update(float dt) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
+        this->m_hasTrail = !g_noTrailEnabled;
+        this->m_hasGlow = !g_noPlayerGlowEnabled;
         if (auto pl = PlayLayer::get()) {
             bool isP1 = this == pl->m_player1;
             bool isP2 = this == pl->m_player2;
