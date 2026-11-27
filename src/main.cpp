@@ -34,7 +34,8 @@ namespace {
     uint64_t g_re4Frame = 0;
     bool g_re4Recording = false;
     bool g_stepperEnabled = false;
-    bool g_stepRequested = false;
+    int g_stepFramesRemaining = 0;
+    CCMenuItemLabel* g_stepHudButton = nullptr;
     bool g_tpsBypassEnabled = false;
     bool g_tpsInternalTick = false;
     double g_tpsAccumulator = 0.0;
@@ -154,6 +155,8 @@ protected:
     CCLabelBMFont* m_tabHint = nullptr;
     CCMenuItemLabel* m_stepperToggle = nullptr;
     CCMenuItemLabel* m_stepOnce = nullptr;
+    CCMenuItemLabel* m_stepFive = nullptr;
+    CCMenuItemLabel* m_stepTen = nullptr;
     CCMenuItemLabel* m_colorCycle = nullptr;
     CCMenuItemLabel* m_replayPlay = nullptr;
     CCMenuItemLabel* m_opacityCycle = nullptr;
@@ -259,6 +262,10 @@ protected:
         m_stepperToggle->setTag(30); m_stepperToggle->setScale(0.55f); m_stepperToggle->setPosition({0.f, 115.f}); menu->addChild(m_stepperToggle);
         m_stepOnce = CCMenuItemLabel::create(makeLabel("STEP +1 FRAME"), this, menu_selector(UltimateMenuPopup::onStepOnce));
         m_stepOnce->setTag(31); m_stepOnce->setScale(0.55f); m_stepOnce->setPosition({0.f, 65.f}); menu->addChild(m_stepOnce);
+        m_stepFive = CCMenuItemLabel::create(makeLabel("STEP +5 FRAMES"), this, menu_selector(UltimateMenuPopup::onStepFive));
+        m_stepFive->setTag(32); m_stepFive->setScale(0.55f); menu->addChild(m_stepFive);
+        m_stepTen = CCMenuItemLabel::create(makeLabel("STEP +10 FRAMES"), this, menu_selector(UltimateMenuPopup::onStepTen));
+        m_stepTen->setTag(33); m_stepTen->setScale(0.55f); menu->addChild(m_stepTen);
         m_colorCycle = CCMenuItemLabel::create(makeLabel("BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
         m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); menu->addChild(m_colorCycle);
         m_opacityCycle = CCMenuItemLabel::create(makeLabel("BUTTON OPACITY"), this, menu_selector(UltimateMenuPopup::onCycleOpacity));
@@ -305,7 +312,7 @@ protected:
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
                            (tab == 1 && tag >= 20 && tag <= 24) ||
-                           (tab == 2 && tag >= 30 && tag <= 31) ||
+                           (tab == 2 && tag >= 30 && tag <= 33) ||
                            (tab == 3 && tag == 40) ||
                            (tab == 4 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
@@ -420,7 +427,8 @@ protected:
 
     void onToggleStepper(CCObject*) {
         g_stepperEnabled = !g_stepperEnabled;
-        g_stepRequested = false;
+        g_stepFramesRemaining = 0;
+        if (g_stepHudButton) g_stepHudButton->setVisible(g_stepperEnabled);
         this->refreshLabels();
     }
 
@@ -431,7 +439,13 @@ protected:
     }
 
     void onStepOnce(CCObject*) {
-        if (g_stepperEnabled) g_stepRequested = true;
+        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
+    }
+    void onStepFive(CCObject*) {
+        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 5, 600);
+    }
+    void onStepTen(CCObject*) {
+        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 10, 600);
     }
 
     void onCycleColor(CCObject*) {
@@ -504,6 +518,9 @@ class $modify(GDUltimateMenuLayer, MenuLayer) {
         return true;
     }
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
+    void onStepHud(CCObject*) {
+        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
+    }
 };
 
 
@@ -573,6 +590,17 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         button->setScale(0.72f);
         menu->addChild(button);
         this->addChild(menu, 999);
+
+        // Dedicated HUD step button remains tappable after closing the popup.
+        auto stepMenu = CCMenu::create();
+        stepMenu->setPosition({winSize.width - 72.f, 42.f});
+        stepMenu->setZOrder(1000);
+        auto stepLabel = CCLabelBMFont::create("STEP +1", "bigFont.fnt");
+        g_stepHudButton = CCMenuItemLabel::create(stepLabel, this, menu_selector(GDUltimatePlayLayer::onStepHud));
+        g_stepHudButton->setScale(0.42f);
+        g_stepHudButton->setVisible(g_stepperEnabled);
+        stepMenu->addChild(g_stepHudButton);
+        this->addChild(stepMenu, 1000);
         return true;
     }
     void update(float dt) {
@@ -590,8 +618,8 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             }
             return;
         }
-        if (g_stepperEnabled && !g_stepRequested) return;
-        if (g_stepperEnabled) g_stepRequested = false;
+        // In step mode the simulation is frozen until the HUD/popup requests ticks.
+        if (g_stepperEnabled && g_stepFramesRemaining <= 0) return;
 
         // Feed recorded input BEFORE the physics tick.
         if (g_re4Playback) {
@@ -603,6 +631,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         }
 
         PlayLayer::update(dt);
+        if (g_stepperEnabled && g_stepFramesRemaining > 0) --g_stepFramesRemaining;
 
         if (g_re4Playback) {
             ++g_re4Frame;
