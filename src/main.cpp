@@ -4,6 +4,8 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
+#include <Geode/modify/SliderTouchLogic.hpp>
+#include <Geode/modify/LevelPage.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <vector>
 #include <cmath>
@@ -13,6 +15,8 @@ using namespace geode::prelude;
 
 namespace {
     bool g_tpsBypassEnabled = false;
+    bool g_mainLevelBypassEnabled = false;
+    bool g_sliderLimitBypassEnabled = false;
     bool g_tpsInternalTick = false;
     double g_tpsAccumulator = 0.0;
     unsigned g_buttonColorIndex = 0;
@@ -47,6 +51,8 @@ protected:
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
     CCMenuItemLabel* m_tpsToggle = nullptr;
+    CCMenuItemLabel* m_mainLevelBypassToggle = nullptr;
+    CCMenuItemLabel* m_sliderLimitBypassToggle = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -133,6 +139,11 @@ protected:
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("TPS BYPASS 240: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
 
+        m_mainLevelBypassToggle = CCMenuItemLabel::create(makeLabel("MAIN LEVEL BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleMainLevelBypass));
+        m_mainLevelBypassToggle->setTag(41); m_mainLevelBypassToggle->setScale(0.55f); menu->addChild(m_mainLevelBypassToggle);
+        m_sliderLimitBypassToggle = CCMenuItemLabel::create(makeLabel("SLIDER LIMIT BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleSliderLimitBypass));
+        m_sliderLimitBypassToggle->setTag(42); m_sliderLimitBypassToggle->setScale(0.55f); menu->addChild(m_sliderLimitBypassToggle);
+
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
         m_tabHint->setPosition({center.x, 44.f});
@@ -166,7 +177,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag == 40) ||
+                           (tab == 1 && tag >= 40 && tag <= 42) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
@@ -191,6 +202,8 @@ protected:
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "TPS BYPASS 240: ON" : "TPS BYPASS 240: OFF");
+        if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
+        if (m_sliderLimitBypassToggle) m_sliderLimitBypassToggle->setString(g_sliderLimitBypassEnabled ? "SLIDER LIMIT BYPASS: ON" : "SLIDER LIMIT BYPASS: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
         if (m_opacityCycle) m_opacityCycle->setString(fmt::format("OPACITY: {}%", static_cast<int>(g_buttonOpacities[g_buttonOpacityIndex]) * 100 / 255).c_str());
         if (m_sizeCycle) m_sizeCycle->setString(fmt::format("SIZE: {}%", static_cast<int>(g_buttonScales[g_buttonScaleIndex] * 100)).c_str());
@@ -204,6 +217,16 @@ protected:
             case 13: Mod::get()->setSettingValue("death-effect", !Mod::get()->getSettingValue<bool>("death-effect")); break;
             case 14: Mod::get()->setSettingValue("noclip-enabled", !Mod::get()->getSettingValue<bool>("noclip-enabled")); break;
         }
+        this->refreshLabels();
+    }
+
+    void onToggleMainLevelBypass(CCObject*) {
+        g_mainLevelBypassEnabled = !g_mainLevelBypassEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleSliderLimitBypass(CCObject*) {
+        g_sliderLimitBypassEnabled = !g_sliderLimitBypassEnabled;
         this->refreshLabels();
     }
 
@@ -383,6 +406,34 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     }
 
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
+};
+
+class $modify(GDUltimateMainLevelBypass, LevelPage) {
+    void onPlay(CCObject* sender) {
+        if (!g_mainLevelBypassEnabled || !m_level) {
+            LevelPage::onPlay(sender);
+            return;
+        }
+        auto requiredCoins = m_level->m_requiredCoins;
+        m_level->m_requiredCoins = 0;
+        LevelPage::onPlay(sender);
+        m_level->m_requiredCoins = requiredCoins;
+    }
+};
+
+class $modify(GDUltimateSliderLimitBypass, SliderTouchLogic) {
+    void ccTouchMoved(CCTouch* touch, CCEvent* event) {
+        if (!g_sliderLimitBypassEnabled) {
+            SliderTouchLogic::ccTouchMoved(touch, event);
+            return;
+        }
+        if (!m_thumb || !m_slider || !touch) return;
+        auto position = this->convertToNodeSpace(touch->getLocation());
+        if (m_thumb->m_vertical) m_thumb->setPositionY(position.y);
+        else m_thumb->setPositionX(position.x);
+        m_slider->updateBar();
+        m_thumb->activate();
+    }
 };
 
 class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
