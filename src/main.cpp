@@ -33,6 +33,15 @@ namespace {
     unsigned g_buttonScaleIndex = 1;
     bool g_hideInLevelButton = false;
     bool g_statusLabelEnabled = false;
+    bool g_labelCpsEnabled = true;
+    bool g_labelTpsEnabled = true;
+    bool g_labelSpeedEnabled = true;
+    bool g_labelProgressEnabled = false;
+    unsigned g_cpsPresses = 0;
+    unsigned g_cpsValue = 0;
+    unsigned g_tpsFrames = 0;
+    unsigned g_tpsValue = 0;
+    double g_labelSampleTime = 0.0;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -172,6 +181,14 @@ protected:
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
         m_statusLabelToggle = CCMenuItemLabel::create(makeLabel("HUD STATUS LABEL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStatusLabel));
         m_statusLabelToggle->setTag(60); m_statusLabelToggle->setScale(0.55f); menu->addChild(m_statusLabelToggle);
+        auto addLabelOption = [&](char const* text, int tag) {
+            auto item = CCMenuItemLabel::create(makeLabel(text), this, menu_selector(UltimateMenuPopup::onToggleLabelOption));
+            item->setTag(tag); item->setScale(0.55f); menu->addChild(item);
+        };
+        addLabelOption("CPS COUNTER: ON", 61);
+        addLabelOption("TPS COUNTER: ON", 62);
+        addLabelOption("SPEED LABEL: ON", 63);
+        addLabelOption("PROGRESS LABEL: OFF", 64);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -235,7 +252,7 @@ protected:
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
                            (tab == 1 && tag >= 40 && tag <= 47) ||
                            (tab == 2 && tag >= 50 && tag <= 53) ||
-                           (tab == 3 && tag == 60);
+                           (tab == 3 && tag >= 60 && tag <= 64);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -260,7 +277,11 @@ protected:
         if (m_practiceModeButton) m_practiceModeButton->setString(g_practiceModeEnabled ? "PRACTICE MODE: ON" : "PRACTICE MODE: OFF");
         if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
-        if (m_statusLabelToggle) m_statusLabelToggle->setString(g_statusLabelEnabled ? "HUD STATUS LABEL: ON" : "HUD STATUS LABEL: OFF");
+        if (m_statusLabelToggle) m_statusLabelToggle->setString(g_statusLabelEnabled ? "HUD LABEL: ON" : "HUD LABEL: OFF");
+        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(61))) item->setString(g_labelCpsEnabled ? "CPS COUNTER: ON" : "CPS COUNTER: OFF");
+        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(62))) item->setString(g_labelTpsEnabled ? "TPS COUNTER: ON" : "TPS COUNTER: OFF");
+        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(63))) item->setString(g_labelSpeedEnabled ? "SPEED LABEL: ON" : "SPEED LABEL: OFF");
+        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(64))) item->setString(g_labelProgressEnabled ? "PROGRESS LABEL: ON" : "PROGRESS LABEL: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -376,6 +397,16 @@ protected:
         this->refreshLabels();
     }
 
+    void onToggleLabelOption(CCObject* sender) {
+        switch (sender->getTag()) {
+            case 61: g_labelCpsEnabled = !g_labelCpsEnabled; break;
+            case 62: g_labelTpsEnabled = !g_labelTpsEnabled; break;
+            case 63: g_labelSpeedEnabled = !g_labelSpeedEnabled; break;
+            case 64: g_labelProgressEnabled = !g_labelProgressEnabled; break;
+        }
+        this->refreshLabels();
+    }
+
     void onToggleStatusLabel(CCObject*) {
         g_statusLabelEnabled = !g_statusLabelEnabled;
         if (auto pl = PlayLayer::get()) {
@@ -483,6 +514,7 @@ class $modify(GDUltimatePauseLayer, PauseLayer) {
 
 class $modify(GDUltimatePlayerObject, PlayerObject) {
     bool pushButton(PlayerButton btn) {
+        if (this == (PlayLayer::get() ? PlayLayer::get()->m_player1 : nullptr) || this == (PlayLayer::get() ? PlayLayer::get()->m_player2 : nullptr)) ++g_cpsPresses;
         return PlayerObject::pushButton(btn);
     }
 
@@ -562,9 +594,22 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             return;
         }
         PlayLayer::update(dt);
+        g_labelSampleTime += std::max(0.0f, dt);
+        ++g_tpsFrames;
+        if (g_labelSampleTime >= 1.0) {
+            g_cpsValue = g_cpsPresses;
+            g_cpsPresses = 0;
+            g_tpsValue = g_tpsFrames;
+            g_tpsFrames = 0;
+            g_labelSampleTime -= 1.0;
+        }
         if (auto label = typeinfo_cast<CCLabelBMFont*>(this->getChildByID("gd-ultimate-status-label"_spr))) {
-            auto speed = Mod::get()->getSettingValue<double>("speed-multiplier");
-            label->setString(fmt::format("SPEED {:.2f}x  |  TPS {}", speed, g_tpsBypassEnabled ? fmt::format("{:.0f}", g_customTPS) : "NORMAL").c_str());
+            std::string text;
+            if (g_labelCpsEnabled) text += fmt::format("CPS: {}\\n", g_cpsValue);
+            if (g_labelTpsEnabled) text += fmt::format("TPS: {}\\n", g_tpsBypassEnabled ? static_cast<unsigned>(g_customTPS) : g_tpsValue);
+            if (g_labelSpeedEnabled) text += fmt::format("SPEED: {:.2f}x\\n", Mod::get()->getSettingValue<double>("speed-multiplier"));
+            if (g_labelProgressEnabled && m_level) text += fmt::format("PROGRESS: {}%", static_cast<int>(m_gameState.m_levelTime * 100.f / std::max(1.f, m_level->m_levelLength)));
+            label->setString(text.c_str());
         }
     }
     void destroyPlayer(PlayerObject* player, GameObject* object) {
