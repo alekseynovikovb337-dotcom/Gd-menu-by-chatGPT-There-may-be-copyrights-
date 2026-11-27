@@ -15,6 +15,7 @@ using namespace geode::prelude;
 
 namespace {
     bool g_tpsBypassEnabled = false;
+    bool g_tps360BypassEnabled = false;
     bool g_mainLevelBypassEnabled = false;
     bool g_sliderLimitBypassEnabled = false;
     bool g_tpsInternalTick = false;
@@ -51,6 +52,7 @@ protected:
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
     CCMenuItemLabel* m_tpsToggle = nullptr;
+    CCMenuItemLabel* m_tps360Toggle = nullptr;
     CCMenuItemLabel* m_mainLevelBypassToggle = nullptr;
     CCMenuItemLabel* m_sliderLimitBypassToggle = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
@@ -138,6 +140,8 @@ protected:
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("TPS BYPASS 240: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
+        m_tps360Toggle = CCMenuItemLabel::create(makeLabel("TPS BYPASS 360 (EXPERIMENTAL): OFF"), this, menu_selector(UltimateMenuPopup::onToggleTps360Bypass));
+        m_tps360Toggle->setTag(43); m_tps360Toggle->setScale(0.55f); menu->addChild(m_tps360Toggle);
 
         m_mainLevelBypassToggle = CCMenuItemLabel::create(makeLabel("MAIN LEVEL BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleMainLevelBypass));
         m_mainLevelBypassToggle->setTag(41); m_mainLevelBypassToggle->setScale(0.55f); menu->addChild(m_mainLevelBypassToggle);
@@ -177,7 +181,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 40 && tag <= 42) ||
+                           (tab == 1 && tag >= 40 && tag <= 43) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
@@ -202,6 +206,7 @@ protected:
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "TPS BYPASS 240: ON" : "TPS BYPASS 240: OFF");
+        if (m_tps360Toggle) m_tps360Toggle->setString(g_tps360BypassEnabled ? "TPS BYPASS 360 (EXPERIMENTAL): ON" : "TPS BYPASS 360 (EXPERIMENTAL): OFF");
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
         if (m_sliderLimitBypassToggle) m_sliderLimitBypassToggle->setString(g_sliderLimitBypassEnabled ? "SLIDER LIMIT BYPASS: ON" : "SLIDER LIMIT BYPASS: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
@@ -232,6 +237,14 @@ protected:
 
     void onToggleTpsBypass(CCObject*) {
         g_tpsBypassEnabled = !g_tpsBypassEnabled;
+        if (g_tpsBypassEnabled) g_tps360BypassEnabled = false;
+        g_tpsAccumulator = 0.0;
+        this->refreshLabels();
+    }
+
+    void onToggleTps360Bypass(CCObject*) {
+        g_tps360BypassEnabled = !g_tps360BypassEnabled;
+        if (g_tps360BypassEnabled) g_tpsBypassEnabled = false;
         g_tpsAccumulator = 0.0;
         this->refreshLabels();
     }
@@ -382,9 +395,9 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     }
     void update(float dt) {
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
-        if (g_tpsBypassEnabled && !g_tpsInternalTick) {
+        if ((g_tpsBypassEnabled || g_tps360BypassEnabled) && !g_tpsInternalTick) {
             g_tpsAccumulator += std::max(0.0f, dt);
-            constexpr double fixedStep = 1.0 / 240.0;
+            const double fixedStep = 1.0 / (g_tps360BypassEnabled ? 360.0 : 240.0);
             int ticks = 0;
             while (g_tpsAccumulator >= fixedStep && ticks < 8) {
                 g_tpsAccumulator -= fixedStep;
