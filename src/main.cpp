@@ -4,7 +4,7 @@
 
 using namespace geode::prelude;
 
-class UltimateMenuPopup : public geode::Popup<> {
+class UltimateMenuPopup : public geode::Popup {
 protected:
     TextInput* m_speedInput = nullptr;
     CCMenuItemLabel* m_speedToggle = nullptr;
@@ -54,8 +54,7 @@ protected:
         menu->addChild(m_deathToggle);
 
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
-        m_speedInput->setCommonFilter(CommonFilter::UFloat);
-        m_speedInput->setNumericMode(true);
+        m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
         m_speedInput->setPosition({center.x, center.y - 76.f});
         m_speedInput->setScale(0.8f);
