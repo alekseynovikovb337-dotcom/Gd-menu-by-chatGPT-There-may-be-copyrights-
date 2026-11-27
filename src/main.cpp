@@ -608,7 +608,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             if (g_labelCpsEnabled) text += fmt::format("CPS: {}\\n", g_cpsValue);
             if (g_labelTpsEnabled) text += fmt::format("TPS: {}\\n", g_tpsBypassEnabled ? static_cast<unsigned>(g_customTPS) : g_tpsValue);
             if (g_labelSpeedEnabled) text += fmt::format("SPEED: {:.2f}x\\n", Mod::get()->getSettingValue<double>("speed-multiplier"));
-            if (g_labelProgressEnabled && m_level) text += fmt::format("PROGRESS: {}%", static_cast<int>(m_gameState.m_levelTime * 100.f / std::max(1.f, m_level->m_levelLength)));
+            if (g_labelProgressEnabled && m_level) text += fmt::format("PROGRESS: {}%", static_cast<int>(m_gameState.m_levelTime * 100.f / std::max(1, m_level->m_levelLength)));
             label->setString(text.c_str());
         }
     }
