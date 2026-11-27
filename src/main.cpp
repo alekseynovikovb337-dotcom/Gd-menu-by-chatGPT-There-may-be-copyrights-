@@ -596,7 +596,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
 
 class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
     void handleButton(bool down, int button, bool isPlayer1) {
-        if (g_re4Recording && !g_re4Playback && PlayLayer::get() == this) {
+        if (g_re4Recording && !g_re4Playback && static_cast<GJBaseGameLayer*>(PlayLayer::get()) == this) {
             g_re4Inputs.push_back({
                 g_re4Frame,
                 static_cast<uint8_t>(down),
