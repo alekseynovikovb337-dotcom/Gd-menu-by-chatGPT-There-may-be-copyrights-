@@ -23,19 +23,19 @@
     "low-gravity": {
       "type": "bool",
       "name": "Low gravity",
-      "description": "Toggle low gravity. Gameplay effect is still being implemented.",
+      "description": "Reduces player gravity while enabled.",
       "default": false
     },
     "jump-effect": {
       "type": "bool",
       "name": "Jump effect",
-      "description": "Toggle the jump visual effect. Effect is still being implemented.",
+      "description": "Toggles player jump particles.",
       "default": true
     },
     "death-effect": {
       "type": "bool",
       "name": "Death effect",
-      "description": "Toggle the death visual effect. Effect is still being implemented.",
+      "description": "Toggles the standard death visual effect.",
       "default": true
     },
     "speedhack-enabled": {
