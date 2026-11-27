@@ -520,7 +520,6 @@ class $modify(GDUltimatePauseLayer, PauseLayer) {
 
 class $modify(GDUltimatePlayerObject, PlayerObject) {
     bool pushButton(PlayerButton btn) {
-        if (this == (PlayLayer::get() ? PlayLayer::get()->m_player1 : nullptr) || this == (PlayLayer::get() ? PlayLayer::get()->m_player2 : nullptr)) ++g_cpsPresses;
         return PlayerObject::pushButton(btn);
     }
 
@@ -553,6 +552,11 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
 };
 
 class $modify(GDUltimatePlayLayer, PlayLayer) {
+    void pushButton(PlayerButton button, bool player1) {
+        ++g_cpsPresses;
+        PlayLayer::pushButton(button, player1);
+    }
+
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
