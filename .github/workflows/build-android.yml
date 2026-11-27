@@ -1,0 +1,41 @@
+name: Build GD Ultimate Menu for Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [Android32, Android64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Geode mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: latest
+          target: ${{ matrix.target }}
+          combine: true
+
+  combine:
+    name: Combine Android builds
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - id: combine
+        uses: geode-sdk/build-geode-mod/combine@main
+        with:
+          optimize-pngs: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GD-Ultimate-Menu-Android
+          path: ${{ steps.combine.outputs.build-output }}/*.geode
+          if-no-files-found: error
