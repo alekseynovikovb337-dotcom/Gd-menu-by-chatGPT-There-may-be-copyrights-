@@ -637,6 +637,15 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         return true;
     }
     void update(float dt) {
+        if (g_cheatIndicatorLabel) {
+            bool active = Mod::get()->getSettingValue<bool>("speedhack-enabled") ||
+                Mod::get()->getSettingValue<bool>("low-gravity") ||
+                Mod::get()->getSettingValue<bool>("noclip-enabled") ||
+                g_tpsBypassEnabled || g_practiceModeEnabled || g_autoPracticeEnabled ||
+                g_autoRetryEnabled || g_autoClickerEnabled || g_noTrailEnabled ||
+                g_noPlayerGlowEnabled || g_forcePlatformerEnabled || g_freeShoppingEnabled;
+            g_cheatIndicatorLabel->setVisible(g_cheatIndicatorEnabled && active);
+        }
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
         if (g_tpsBypassEnabled && !g_tpsInternalTick) {
             g_tpsAccumulator += std::max(0.0f, dt);
