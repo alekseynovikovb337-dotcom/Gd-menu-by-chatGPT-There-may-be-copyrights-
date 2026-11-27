@@ -575,18 +575,22 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         resetRe4Recorder();
         g_re4Recording = false;
-        if (g_hideInLevelButton) return true;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        auto menu = CCMenu::create();
-        if (!menu) return true;
-        menu->setID("gd-ultimate-game-menu"_spr);
-        menu->setPosition({36.f, winSize.height - 36.f});
-        menu->setZOrder(999);
-        auto button = createUltimateButton(this, menu_selector(GDUltimatePlayLayer::onOpenUltimateMenu));
-        if (!button) return true;
-        button->setScale(0.72f);
-        menu->addChild(button);
-        this->addChild(menu, 999);
+        // Hiding the main in-level menu must not suppress the Frame Stepper HUD.
+        if (!g_hideInLevelButton) {
+            auto menu = CCMenu::create();
+            if (menu) {
+                menu->setID("gd-ultimate-game-menu"_spr);
+                menu->setPosition({36.f, winSize.height - 36.f});
+                menu->setZOrder(999);
+                auto button = createUltimateButton(this, menu_selector(GDUltimatePlayLayer::onOpenUltimateMenu));
+                if (button) {
+                    button->setScale(0.72f);
+                    menu->addChild(button);
+                    this->addChild(menu, 999);
+                }
+            }
+        }
 
         // Dedicated HUD step button remains tappable after closing the popup.
         auto stepMenu = CCMenu::create();
@@ -635,7 +639,15 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
 
         if (g_re4Playback) {
             ++g_re4Frame;
-            if (g_re4PlaybackCursor >= g_re4PlaybackInputs.size()) g_re4Playback = false;
+            if (g_re4PlaybackCursor >= g_re4PlaybackInputs.size()) {
+                // Release both players' inputs so a replay ending on a held press
+                // cannot leave the game stuck in that input state.
+                for (int button = 0; button <= 16; ++button) {
+                    this->handleButton(false, button, true);
+                    this->handleButton(false, button, false);
+                }
+                g_re4Playback = false;
+            }
         }
         if (g_re4Recording) {
             ++g_re4Frame;
