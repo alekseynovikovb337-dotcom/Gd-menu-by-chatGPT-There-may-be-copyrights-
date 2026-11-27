@@ -2,6 +2,7 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/modify/SliderTouchLogic.hpp>
@@ -551,13 +552,17 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
     }
 };
 
-class $modify(GDUltimatePlayLayer, PlayLayer) {
-    void pushButton(PlayerButton button, bool player1) {
-        ++g_cpsPresses;
-        if (player1 && m_player1) m_player1->pushButton(button);
-        else if (!player1 && m_player2) m_player2->pushButton(button);
+class $modify(GDUltimateInputCounter, GJBaseGameLayer) {
+    void handleButton(bool down, int button, bool isPlayer1) {
+        // Geometry Dash jump input is button 1. Count presses only, not releases.
+        if (down && button == 1 && PlayLayer::get()) {
+            ++g_cpsPresses;
+        }
+        GJBaseGameLayer::handleButton(down, button, isPlayer1);
     }
+};
 
+class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
