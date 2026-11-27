@@ -1,5 +1,5 @@
 {
-  "geode": "$GEODE_VERSION",
+  "geode": "v6.0.0",
   "gd": {
     "android": "2.2081"
   },
@@ -13,9 +13,9 @@
       "type": "float",
       "name": "Speed multiplier",
       "description": "Planned gameplay setting. Current starter build stores this value only.",
-      "default": 1.0,
+      "default": 1,
       "min": 0.5,
-      "max": 2.0
+      "max": 2
     },
     "low-gravity": {
       "type": "bool",
