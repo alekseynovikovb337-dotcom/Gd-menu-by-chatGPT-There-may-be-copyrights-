@@ -2,7 +2,6 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
-#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/modify/SliderTouchLogic.hpp>
@@ -33,16 +32,8 @@ namespace {
     unsigned g_buttonOpacityIndex = 0;
     unsigned g_buttonScaleIndex = 1;
     bool g_hideInLevelButton = false;
-    bool g_statusLabelEnabled = false;
-    bool g_labelCpsEnabled = true;
-    bool g_labelTpsEnabled = true;
-    bool g_labelSpeedEnabled = true;
-    bool g_labelProgressEnabled = false;
-    unsigned g_cpsPresses = 0;
-    unsigned g_cpsValue = 0;
-    unsigned g_tpsFrames = 0;
-    unsigned g_tpsValue = 0;
-    double g_labelSampleTime = 0.0;
+    bool g_autoPracticeEnabled = false;
+    bool g_hidePlayerEnabled = false;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -56,10 +47,6 @@ namespace {
 }
 
 static void refreshButtonAppearance();
-static bool shouldShowHudLabels() {
-    return g_statusLabelEnabled || g_labelCpsEnabled || g_labelTpsEnabled || g_labelSpeedEnabled || g_labelProgressEnabled;
-}
-
 class UltimateMenuPopup : public geode::Popup {
 protected:
     TextInput* m_speedInput = nullptr;
@@ -75,7 +62,6 @@ protected:
     CCMenuItemLabel* m_opacityCycle = nullptr;
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
-    CCMenuItemLabel* m_statusLabelToggle = nullptr;
     CCMenuItemLabel* m_tpsToggle = nullptr;
     CCMenuItemLabel* m_tpsApply = nullptr;
     TextInput* m_tpsInput = nullptr;
@@ -88,6 +74,8 @@ protected:
     CCMenuItemLabel* m_instantCompleteButton = nullptr;
     CCMenuItemLabel* m_practiceModeButton = nullptr;
     CCMenuItemLabel* m_ghostEffectButton = nullptr;
+    CCMenuItemLabel* m_autoPracticeButton = nullptr;
+    CCMenuItemLabel* m_hidePlayerButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -183,16 +171,10 @@ protected:
         m_sizeCycle->setTag(52); m_sizeCycle->setScale(0.55f); menu->addChild(m_sizeCycle);
         m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
-        m_statusLabelToggle = CCMenuItemLabel::create(makeLabel("HUD STATUS LABEL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStatusLabel));
-        m_statusLabelToggle->setTag(60); m_statusLabelToggle->setScale(0.55f); menu->addChild(m_statusLabelToggle);
-        auto addLabelOption = [&](char const* text, int tag) {
-            auto item = CCMenuItemLabel::create(makeLabel(text), this, menu_selector(UltimateMenuPopup::onToggleLabelOption));
-            item->setTag(tag); item->setScale(0.55f); menu->addChild(item);
-        };
-        addLabelOption("CPS COUNTER: ON", 61);
-        addLabelOption("TPS COUNTER: ON", 62);
-        addLabelOption("SPEED LABEL: ON", 63);
-        addLabelOption("PROGRESS LABEL: OFF", 64);
+        m_autoPracticeButton = CCMenuItemLabel::create(makeLabel("AUTO PRACTICE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoPractice));
+        m_autoPracticeButton->setTag(18); m_autoPracticeButton->setScale(0.55f); menu->addChild(m_autoPracticeButton);
+        m_hidePlayerButton = CCMenuItemLabel::create(makeLabel("HIDE PLAYER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHidePlayer));
+        m_hidePlayerButton->setTag(19); m_hidePlayerButton->setScale(0.55f); menu->addChild(m_hidePlayerButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -228,7 +210,7 @@ protected:
         auto tabs = CCMenu::create();
         tabs->setPosition({center.x, 22.f});
         m_mainLayer->addChild(tabs, 6);
-        const char* tabNames[] = {"PLAYER", "BYPASS", "INTERFACE", "LABELS"};
+        const char* tabNames[] = {"PLAYER", "CHEATS", "BYPASS", "INTERFACE"};
         for (int i = 0; i < 4; ++i) {
             auto label = CCLabelBMFont::create(tabNames[i], "bigFont.fnt");
             auto item = CCMenuItemLabel::create(label, this, menu_selector(UltimateMenuPopup::onTab));
@@ -254,9 +236,9 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 40 && tag <= 47) ||
-                           (tab == 2 && tag >= 50 && tag <= 53) ||
-                           (tab == 3 && tag >= 60 && tag <= 64);
+                           (tab == 1 && tag >= 18 && tag <= 23) ||
+                           (tab == 2 && tag >= 40 && tag <= 47) ||
+                           (tab == 3 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -264,7 +246,7 @@ protected:
                 ++row;
             }
         }
-        const char* hints[] = {"Player settings", "TPS, level and pause bypasses", "Floating button appearance", "In-level HUD labels"};
+        const char* hints[] = {"Player settings", "Extra cheat options", "TPS, level and pause bypasses", "Floating button appearance"};
         m_tabHint->setString(hints[std::clamp(tab, 0, 3)]);
     }
 
@@ -281,11 +263,8 @@ protected:
         if (m_practiceModeButton) m_practiceModeButton->setString(g_practiceModeEnabled ? "PRACTICE MODE: ON" : "PRACTICE MODE: OFF");
         if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
-        if (m_statusLabelToggle) m_statusLabelToggle->setString(g_statusLabelEnabled ? "HUD LABEL: ON" : "HUD LABEL: OFF");
-        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(61))) item->setString(g_labelCpsEnabled ? "CPS COUNTER: ON" : "CPS COUNTER: OFF");
-        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(62))) item->setString(g_labelTpsEnabled ? "TPS COUNTER: ON" : "TPS COUNTER: OFF");
-        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(63))) item->setString(g_labelSpeedEnabled ? "SPEED LABEL: ON" : "SPEED LABEL: OFF");
-        if (auto item = typeinfo_cast<CCMenuItemLabel*>(m_itemsMenu->getChildByTag(64))) item->setString(g_labelProgressEnabled ? "PROGRESS LABEL: ON" : "PROGRESS LABEL: OFF");
+        if (m_autoPracticeButton) m_autoPracticeButton->setString(g_autoPracticeEnabled ? "AUTO PRACTICE: ON" : "AUTO PRACTICE: OFF");
+        if (m_hidePlayerButton) m_hidePlayerButton->setString(g_hidePlayerEnabled ? "HIDE PLAYER: ON" : "HIDE PLAYER: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -401,23 +380,17 @@ protected:
         this->refreshLabels();
     }
 
-    void onToggleLabelOption(CCObject* sender) {
-        switch (sender->getTag()) {
-            case 61: g_labelCpsEnabled = !g_labelCpsEnabled; break;
-            case 62: g_labelTpsEnabled = !g_labelTpsEnabled; break;
-            case 63: g_labelSpeedEnabled = !g_labelSpeedEnabled; break;
-            case 64: g_labelProgressEnabled = !g_labelProgressEnabled; break;
-        }
-        if (auto pl = PlayLayer::get()) {
-            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(shouldShowHudLabels());
-        }
+    void onToggleAutoPractice(CCObject*) {
+        g_autoPracticeEnabled = !g_autoPracticeEnabled;
+        if (auto layer = PlayLayer::get()) layer->togglePracticeMode(g_autoPracticeEnabled);
         this->refreshLabels();
     }
 
-    void onToggleStatusLabel(CCObject*) {
-        g_statusLabelEnabled = !g_statusLabelEnabled;
-        if (auto pl = PlayLayer::get()) {
-            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(shouldShowHudLabels());
+    void onToggleHidePlayer(CCObject*) {
+        g_hidePlayerEnabled = !g_hidePlayerEnabled;
+        if (auto layer = PlayLayer::get()) {
+            if (layer->m_player1) layer->m_player1->setVisible(!g_hidePlayerEnabled);
+            if (layer->m_player2) layer->m_player2->setVisible(!g_hidePlayerEnabled);
         }
         this->refreshLabels();
     }
@@ -534,6 +507,7 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
             bool isP1 = this == pl->m_player1;
             bool isP2 = this == pl->m_player2;
             if (isP1 || isP2) {
+                this->setVisible(!g_hidePlayerEnabled);
                 auto& tracked = isP1 ? g_gravityTrackedP1 : g_gravityTrackedP2;
                 auto& base = isP1 ? g_gravityBaseP1 : g_gravityBaseP2;
                 auto& last = isP1 ? g_gravityLastP1 : g_gravityLastP2;
@@ -552,31 +526,11 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
     }
 };
 
-class $modify(GDUltimateInputCounter, GJBaseGameLayer) {
-    void handleButton(bool down, int button, bool isPlayer1) {
-        // Geometry Dash jump input is button 1. Count presses only, not releases.
-        if (down && button == 1 && PlayLayer::get()) {
-            ++g_cpsPresses;
-        }
-        GJBaseGameLayer::handleButton(down, button, isPlayer1);
-    }
-};
-
 class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        auto statusLabel = CCLabelBMFont::create("CPS: 0", "bigFont.fnt");
-        if (statusLabel) {
-            statusLabel->setID("gd-ultimate-status-label"_spr);
-            statusLabel->setAnchorPoint({0.f, 1.f});
-            statusLabel->setPosition({12.f, winSize.height - 80.f});
-            statusLabel->setScale(0.55f);
-            statusLabel->setColor({255, 255, 255});
-            statusLabel->setVisible(true);
-            statusLabel->setZOrder(10000);
-            this->addChild(statusLabel, 10000);
-        }
+        if (g_autoPracticeEnabled) this->togglePracticeMode(true);
         // Optional in-level menu button.
         if (!g_hideInLevelButton) {
             auto menu = CCMenu::create();
@@ -611,25 +565,6 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             return;
         }
         PlayLayer::update(dt);
-        g_labelSampleTime += std::max(0.0f, dt);
-        ++g_tpsFrames;
-        if (g_labelSampleTime >= 1.0) {
-            g_cpsValue = g_cpsPresses;
-            g_cpsPresses = 0;
-            g_tpsValue = g_tpsFrames;
-            g_tpsFrames = 0;
-            g_labelSampleTime -= 1.0;
-        }
-        if (auto label = typeinfo_cast<CCLabelBMFont*>(this->getChildByID("gd-ultimate-status-label"_spr))) {
-            std::string text;
-            if (g_labelCpsEnabled) text += fmt::format("CPS: {}\n", g_cpsValue);
-            if (g_labelTpsEnabled) text += fmt::format("TPS: {}\n", g_tpsBypassEnabled ? static_cast<unsigned>(g_customTPS) : g_tpsValue);
-            if (g_labelSpeedEnabled) text += fmt::format("SPEED: {:.2f}x\n", Mod::get()->getSettingValue<double>("speed-multiplier"));
-            if (g_labelProgressEnabled && m_level) text += fmt::format("PROGRESS: {}%", static_cast<int>(m_gameState.m_levelTime * 100.f / std::max(1, m_level->m_levelLength)));
-            label->setString(text.empty() ? "Labels enabled" : text.c_str());
-            label->setVisible(shouldShowHudLabels());
-            label->setZOrder(10000);
-        }
     }
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
