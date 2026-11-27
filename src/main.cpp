@@ -609,9 +609,8 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         }
         PlayLayer::update(dt);
     }
-    void onPlayerDied() {
-        PlayLayer::onPlayerDied();
-        if (g_autoRetryEnabled) this->scheduleOnce(schedule_selector(GDUltimatePlayLayer::retryAfterDeath), 0.45f);
+    void retryAfterDeath(float) {
+        if (g_autoRetryEnabled && PlayLayer::get() == this) this->resetLevel();
     }
 
     void retryAfterDeath(float) {
@@ -624,6 +623,9 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             return;
         }
         PlayLayer::destroyPlayer(player, object);
+        if (g_autoRetryEnabled && player && (player == m_player1 || player == m_player2)) {
+            this->scheduleOnce(schedule_selector(GDUltimatePlayLayer::retryAfterDeath), 0.45f);
+        }
     }
 
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
