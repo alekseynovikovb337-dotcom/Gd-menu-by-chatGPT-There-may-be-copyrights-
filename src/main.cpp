@@ -141,6 +141,7 @@ protected:
     CCMenuItemLabel* m_stepperToggle = nullptr;
     CCMenuItemLabel* m_stepOnce = nullptr;
     CCMenuItemLabel* m_colorCycle = nullptr;
+    CCMenuItemLabel* m_replayPlay = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
@@ -225,6 +226,13 @@ protected:
         saveReplay->setScale(0.55f);
         saveReplay->setPosition({0.f, -125.f});
         menu->addChild(saveReplay);
+
+        auto loadReplay = CCMenuItemLabel::create(makeLabel("LOAD .RE4"), this, menu_selector(UltimateMenuPopup::onLoadReplay));
+        loadReplay->setTag(22); loadReplay->setScale(0.55f); loadReplay->setPosition({0.f, -165.f}); menu->addChild(loadReplay);
+        m_replayPlay = CCMenuItemLabel::create(makeLabel("PLAY REPLAY"), this, menu_selector(UltimateMenuPopup::onPlayReplay));
+        m_replayPlay->setTag(23); m_replayPlay->setScale(0.55f); m_replayPlay->setPosition({0.f, -205.f}); menu->addChild(m_replayPlay);
+        auto stopReplay = CCMenuItemLabel::create(makeLabel("STOP REPLAY"), this, menu_selector(UltimateMenuPopup::onStopReplay));
+        stopReplay->setTag(24); stopReplay->setScale(0.55f); stopReplay->setPosition({0.f, -245.f}); menu->addChild(stopReplay);
 
         m_stepperToggle = CCMenuItemLabel::create(makeLabel("Frame Stepper: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStepper));
         m_stepperToggle->setTag(30); m_stepperToggle->setScale(0.55f); m_stepperToggle->setPosition({0.f, 115.f}); menu->addChild(m_stepperToggle);
@@ -376,6 +384,35 @@ protected:
     void onCycleColor(CCObject*) {
         g_buttonColorIndex = (g_buttonColorIndex + 1) % (sizeof(g_buttonColors) / sizeof(g_buttonColors[0]));
         FLAlertLayer::create("Interface", "Button color preset changed. New buttons use this color.", "OK")->show();
+    }
+
+    void onLoadReplay(CCObject*) {
+        if (!loadRe4Replay()) {
+            FLAlertLayer::create("RE4 import", "Could not load last-replay.re4 from the mod save folder.", "OK")->show();
+            return;
+        }
+        FLAlertLayer::create("RE4 import", fmt::format("Loaded {} input events.", g_re4PlaybackInputs.size()), "OK")->show();
+    }
+
+    void onPlayReplay(CCObject*) {
+        if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
+            FLAlertLayer::create("Replay", "Import last-replay.re4 first.", "OK")->show();
+            return;
+        }
+        if (!PlayLayer::get()) {
+            FLAlertLayer::create("Replay", "Open a level before playback.", "OK")->show();
+            return;
+        }
+        g_re4Frame = 0;
+        g_re4PlaybackCursor = 0;
+        g_re4Playback = true;
+        g_re4Recording = false;
+        this->refreshLabels();
+    }
+
+    void onStopReplay(CCObject*) {
+        g_re4Playback = false;
+        this->refreshLabels();
     }
 
     void onApplySpeed(CCObject*) {
