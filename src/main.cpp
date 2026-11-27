@@ -40,6 +40,8 @@ namespace {
     bool g_autoClickerPressed = false;
     bool g_noTrailEnabled = false;
     bool g_noPlayerGlowEnabled = false;
+    bool g_forcePlatformerEnabled = false;
+    bool g_waveTrailEnabled = true;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -86,6 +88,8 @@ protected:
     CCMenuItemLabel* m_autoClickerButton = nullptr;
     CCMenuItemLabel* m_noTrailButton = nullptr;
     CCMenuItemLabel* m_noGlowButton = nullptr;
+    CCMenuItemLabel* m_forcePlatformerButton = nullptr;
+    CCMenuItemLabel* m_waveTrailButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -193,6 +197,10 @@ protected:
         m_noTrailButton->setTag(22); m_noTrailButton->setScale(0.55f); menu->addChild(m_noTrailButton);
         m_noGlowButton = CCMenuItemLabel::create(makeLabel("NO PLAYER GLOW: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoGlow));
         m_noGlowButton->setTag(23); m_noGlowButton->setScale(0.55f); menu->addChild(m_noGlowButton);
+        m_forcePlatformerButton = CCMenuItemLabel::create(makeLabel("FORCE PLATFORMER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleForcePlatformer));
+        m_forcePlatformerButton->setTag(24); m_forcePlatformerButton->setScale(0.55f); menu->addChild(m_forcePlatformerButton);
+        m_waveTrailButton = CCMenuItemLabel::create(makeLabel("WAVE TRAIL: ON"), this, menu_selector(UltimateMenuPopup::onToggleWaveTrail));
+        m_waveTrailButton->setTag(25); m_waveTrailButton->setScale(0.55f); menu->addChild(m_waveTrailButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -254,7 +262,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 18 && tag <= 23) ||
+                           (tab == 1 && tag >= 18 && tag <= 25) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
@@ -287,6 +295,8 @@ protected:
         if (m_autoClickerButton) m_autoClickerButton->setString(g_autoClickerEnabled ? "AUTO CLICKER: ON" : "AUTO CLICKER: OFF");
         if (m_noTrailButton) m_noTrailButton->setString(g_noTrailEnabled ? "NO TRAIL: ON" : "NO TRAIL: OFF");
         if (m_noGlowButton) m_noGlowButton->setString(g_noPlayerGlowEnabled ? "NO PLAYER GLOW: ON" : "NO PLAYER GLOW: OFF");
+        if (m_forcePlatformerButton) m_forcePlatformerButton->setString(g_forcePlatformerEnabled ? "FORCE PLATFORMER: ON" : "FORCE PLATFORMER: OFF");
+        if (m_waveTrailButton) m_waveTrailButton->setString(g_waveTrailEnabled ? "WAVE TRAIL: ON" : "WAVE TRAIL: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -415,6 +425,16 @@ protected:
 
     void onToggleNoGlow(CCObject*) {
         g_noPlayerGlowEnabled = !g_noPlayerGlowEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleForcePlatformer(CCObject*) {
+        g_forcePlatformerEnabled = !g_forcePlatformerEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleWaveTrail(CCObject*) {
+        g_waveTrailEnabled = !g_waveTrailEnabled;
         this->refreshLabels();
     }
 
@@ -551,8 +571,9 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         if (this->m_ghostTrail) this->m_ghostTrail->setVisible(!g_noTrailEnabled);
-        if (this->m_waveTrail) this->m_waveTrail->setVisible(!g_noTrailEnabled);
+        if (this->m_waveTrail) this->m_waveTrail->setVisible(!g_noTrailEnabled && g_waveTrailEnabled);
         this->m_hasGlow = !g_noPlayerGlowEnabled;
+        if (g_forcePlatformerEnabled) this->m_isPlatformer = true;
         if (auto pl = PlayLayer::get()) {
             bool isP1 = this == pl->m_player1;
             bool isP2 = this == pl->m_player2;
