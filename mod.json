@@ -1,0 +1,39 @@
+{
+  "geode": "$GEODE_VERSION",
+  "gd": {
+    "android": "2.2081"
+  },
+  "id": "com.chatgpt.gdultimatemenu",
+  "name": "GD Ultimate Menu",
+  "version": "v0.1.0",
+  "developer": "ChatGPT + user",
+  "description": "A starter Android mod menu for Geometry Dash 2.2081.",
+  "settings": {
+    "speed-multiplier": {
+      "type": "float",
+      "name": "Speed multiplier",
+      "description": "Planned gameplay setting. Current starter build stores this value only.",
+      "default": 1.0,
+      "min": 0.5,
+      "max": 2.0
+    },
+    "low-gravity": {
+      "type": "bool",
+      "name": "Low gravity",
+      "description": "Planned gameplay setting. Current starter build stores this toggle only.",
+      "default": false
+    },
+    "jump-effect": {
+      "type": "bool",
+      "name": "Jump effect",
+      "description": "Planned visual effect toggle. Current starter build stores this toggle only.",
+      "default": true
+    },
+    "death-effect": {
+      "type": "bool",
+      "name": "Death effect",
+      "description": "Planned visual effect toggle. Current starter build stores this toggle only.",
+      "default": true
+    }
+  }
+}
