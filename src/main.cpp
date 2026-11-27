@@ -268,6 +268,9 @@ protected:
         m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
 
+        m_tpsToggle = CCMenuItemLabel::create(makeLabel("TPS BYPASS 240: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
+        m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
+
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
         m_tabHint->setPosition({center.x, 44.f});
@@ -304,6 +307,7 @@ protected:
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
                            (tab == 1 && tag >= 20 && tag <= 24) ||
                            (tab == 2 && tag >= 30 && tag <= 31) ||
+                           (tab == 3 && tag == 40) ||
                            (tab == 4 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
@@ -315,7 +319,7 @@ protected:
         const char* hints[] = {
             "Player settings", "RE4: record, save, load and playback",
             "Toggle step mode, then tap STEP +1 FRAME",
-            "Bypasses are queued for compatibility-safe hooks",
+            "TPS Bypass: fixed 240 Hz simulation ticks",
             "Cycle the floating button accent color"
         };
         m_tabHint->setString(hints[std::clamp(tab, 0, 4)]);
@@ -335,6 +339,7 @@ protected:
         if (m_stepperToggle) m_stepperToggle->setString(g_stepperEnabled ? "Frame Stepper: ON" : "Frame Stepper: OFF");
         if (m_replayPlay) m_replayPlay->setString(g_re4Playback ? "PLAYING .RE4" : "PLAY REPLAY");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
+        if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "TPS BYPASS 240: ON" : "TPS BYPASS 240: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
         if (m_opacityCycle) m_opacityCycle->setString(fmt::format("OPACITY: {}%", static_cast<int>(g_buttonOpacities[g_buttonOpacityIndex]) * 100 / 255).c_str());
         if (m_sizeCycle) m_sizeCycle->setString(fmt::format("SIZE: {}%", static_cast<int>(g_buttonScales[g_buttonScaleIndex] * 100)).c_str());
@@ -417,6 +422,12 @@ protected:
     void onToggleStepper(CCObject*) {
         g_stepperEnabled = !g_stepperEnabled;
         g_stepRequested = false;
+        this->refreshLabels();
+    }
+
+    void onToggleTpsBypass(CCObject*) {
+        g_tpsBypassEnabled = !g_tpsBypassEnabled;
+        g_tpsAccumulator = 0.0;
         this->refreshLabels();
     }
 
