@@ -12,7 +12,7 @@
     "speed-multiplier": {
       "type": "float",
       "name": "Speed multiplier",
-      "description": "Adjust the speed multiplier. Gameplay hook is still being implemented.",
+      "description": "Adjust the active speed multiplier.",
       "default": 1,
       "min": 0.5,
       "max": 3,
@@ -42,6 +42,12 @@
       "type": "bool",
       "name": "Enable Speedhack",
       "description": "Master switch for the speed multiplier.",
+      "default": false
+    },
+    "noclip-enabled": {
+      "type": "bool",
+      "name": "Enable NoClip",
+      "description": "Prevents player death from level hazards.",
       "default": false
     }
   }
