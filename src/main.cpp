@@ -32,6 +32,7 @@ namespace {
     unsigned g_buttonOpacityIndex = 0;
     unsigned g_buttonScaleIndex = 1;
     bool g_hideInLevelButton = false;
+    bool g_statusLabelEnabled = false;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -61,6 +62,7 @@ protected:
     CCMenuItemLabel* m_opacityCycle = nullptr;
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
+    CCMenuItemLabel* m_statusLabelToggle = nullptr;
     CCMenuItemLabel* m_tpsToggle = nullptr;
     CCMenuItemLabel* m_tpsApply = nullptr;
     TextInput* m_tpsInput = nullptr;
@@ -168,6 +170,8 @@ protected:
         m_sizeCycle->setTag(52); m_sizeCycle->setScale(0.55f); menu->addChild(m_sizeCycle);
         m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
+        m_statusLabelToggle = CCMenuItemLabel::create(makeLabel("HUD STATUS LABEL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStatusLabel));
+        m_statusLabelToggle->setTag(60); m_statusLabelToggle->setScale(0.55f); menu->addChild(m_statusLabelToggle);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -203,13 +207,13 @@ protected:
         auto tabs = CCMenu::create();
         tabs->setPosition({center.x, 22.f});
         m_mainLayer->addChild(tabs, 6);
-        const char* tabNames[] = {"PLAYER", "BYPASS", "INTERFACE"};
-        for (int i = 0; i < 3; ++i) {
+        const char* tabNames[] = {"PLAYER", "BYPASS", "INTERFACE", "LABELS"};
+        for (int i = 0; i < 4; ++i) {
             auto label = CCLabelBMFont::create(tabNames[i], "bigFont.fnt");
             auto item = CCMenuItemLabel::create(label, this, menu_selector(UltimateMenuPopup::onTab));
             item->setTag(i);
             item->setScale(0.36f);
-            item->setPosition({-100.f + i * 100.f, 0.f});
+            item->setPosition({-135.f + i * 90.f, 0.f});
             tabs->addChild(item);
         }
         this->switchTab(0);
@@ -230,7 +234,8 @@ protected:
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
                            (tab == 1 && tag >= 40 && tag <= 47) ||
-                           (tab == 2 && tag >= 50 && tag <= 53);
+                           (tab == 2 && tag >= 50 && tag <= 53) ||
+                           (tab == 3 && tag == 60);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -238,8 +243,8 @@ protected:
                 ++row;
             }
         }
-        const char* hints[] = {"Player settings", "TPS, level and pause bypasses", "Floating button appearance"};
-        m_tabHint->setString(hints[std::clamp(tab, 0, 2)]);
+        const char* hints[] = {"Player settings", "TPS, level and pause bypasses", "Floating button appearance", "In-level HUD labels"};
+        m_tabHint->setString(hints[std::clamp(tab, 0, 3)]);
     }
 
     void onTab(CCObject* sender) {
@@ -255,6 +260,7 @@ protected:
         if (m_practiceModeButton) m_practiceModeButton->setString(g_practiceModeEnabled ? "PRACTICE MODE: ON" : "PRACTICE MODE: OFF");
         if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
+        if (m_statusLabelToggle) m_statusLabelToggle->setString(g_statusLabelEnabled ? "HUD STATUS LABEL: ON" : "HUD STATUS LABEL: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -367,6 +373,14 @@ protected:
     void onCycleSize(CCObject*) {
         g_buttonScaleIndex = (g_buttonScaleIndex + 1) % (sizeof(g_buttonScales) / sizeof(g_buttonScales[0]));
         refreshButtonAppearance();
+        this->refreshLabels();
+    }
+
+    void onToggleStatusLabel(CCObject*) {
+        g_statusLabelEnabled = !g_statusLabelEnabled;
+        if (auto pl = PlayLayer::get()) {
+            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(g_statusLabelEnabled);
+        }
         this->refreshLabels();
     }
 
@@ -504,6 +518,16 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
+        auto statusLabel = CCLabelBMFont::create("", "bigFont.fnt");
+        if (statusLabel) {
+            statusLabel->setID("gd-ultimate-status-label"_spr);
+            statusLabel->setAnchorPoint({1.f, 1.f});
+            statusLabel->setPosition({winSize.width - 12.f, winSize.height - 70.f});
+            statusLabel->setScale(0.42f);
+            statusLabel->setVisible(g_statusLabelEnabled);
+            statusLabel->setZOrder(1000);
+            this->addChild(statusLabel, 1000);
+        }
         // Optional in-level menu button.
         if (!g_hideInLevelButton) {
             auto menu = CCMenu::create();
@@ -538,6 +562,10 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             return;
         }
         PlayLayer::update(dt);
+        if (auto label = typeinfo_cast<CCLabelBMFont*>(this->getChildByID("gd-ultimate-status-label"_spr))) {
+            auto speed = Mod::get()->getSettingValue<double>("speed-multiplier");
+            label->setString(fmt::format("SPEED {:.2f}x  |  TPS {}", speed, g_tpsBypassEnabled ? fmt::format("{:.0f}", g_customTPS) : "NORMAL").c_str());
+        }
     }
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
