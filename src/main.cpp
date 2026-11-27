@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <vector>
 #include <cmath>
-#include <cmath>
 
 
 using namespace geode::prelude;
@@ -36,6 +35,11 @@ namespace {
     bool g_stepperEnabled = false;
     bool g_stepRequested = false;
     unsigned g_buttonColorIndex = 0;
+    unsigned g_buttonOpacityIndex = 0;
+    unsigned g_buttonScaleIndex = 1;
+    bool g_hideInLevelButton = false;
+    const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
+    const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
     std::vector<Re4Input> g_re4PlaybackInputs;
     size_t g_re4PlaybackCursor = 0;
@@ -142,6 +146,9 @@ protected:
     CCMenuItemLabel* m_stepOnce = nullptr;
     CCMenuItemLabel* m_colorCycle = nullptr;
     CCMenuItemLabel* m_replayPlay = nullptr;
+    CCMenuItemLabel* m_opacityCycle = nullptr;
+    CCMenuItemLabel* m_sizeCycle = nullptr;
+    CCMenuItemLabel* m_hideButton = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
@@ -154,10 +161,10 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 390.f});
+        content->setContentSize({350.f, 220.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 195.f});
+        menu->setPosition({175.f, 110.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
@@ -202,7 +209,7 @@ protected:
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
         m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
-        m_speedInput->setPosition({center.x, 35.f});
+        m_speedInput->setPosition({175.f, 15.f});
         m_speedInput->setScale(0.8f);
         content->addChild(m_speedInput);
 
@@ -238,8 +245,14 @@ protected:
         m_stepperToggle->setTag(30); m_stepperToggle->setScale(0.55f); m_stepperToggle->setPosition({0.f, 115.f}); menu->addChild(m_stepperToggle);
         m_stepOnce = CCMenuItemLabel::create(makeLabel("STEP +1 FRAME"), this, menu_selector(UltimateMenuPopup::onStepOnce));
         m_stepOnce->setTag(31); m_stepOnce->setScale(0.55f); m_stepOnce->setPosition({0.f, 65.f}); menu->addChild(m_stepOnce);
-        m_colorCycle = CCMenuItemLabel::create(makeLabel("CYCLE BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
-        m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); m_colorCycle->setPosition({0.f, 115.f}); menu->addChild(m_colorCycle);
+        m_colorCycle = CCMenuItemLabel::create(makeLabel("BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
+        m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); menu->addChild(m_colorCycle);
+        m_opacityCycle = CCMenuItemLabel::create(makeLabel("BUTTON OPACITY"), this, menu_selector(UltimateMenuPopup::onCycleOpacity));
+        m_opacityCycle->setTag(51); m_opacityCycle->setScale(0.55f); menu->addChild(m_opacityCycle);
+        m_sizeCycle = CCMenuItemLabel::create(makeLabel("BUTTON SIZE"), this, menu_selector(UltimateMenuPopup::onCycleSize));
+        m_sizeCycle->setTag(52); m_sizeCycle->setScale(0.55f); menu->addChild(m_sizeCycle);
+        m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
+        m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
 
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
