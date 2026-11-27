@@ -42,6 +42,8 @@ namespace {
     bool g_noPlayerGlowEnabled = false;
     bool g_forcePlatformerEnabled = false;
     bool g_waveTrailEnabled = true;
+    bool g_cheatIndicatorEnabled = true;
+    CCLabelBMFont* g_cheatIndicatorLabel = nullptr;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -90,6 +92,7 @@ protected:
     CCMenuItemLabel* m_noGlowButton = nullptr;
     CCMenuItemLabel* m_forcePlatformerButton = nullptr;
     CCMenuItemLabel* m_waveTrailButton = nullptr;
+    CCMenuItemLabel* m_cheatIndicatorButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -185,6 +188,8 @@ protected:
         m_sizeCycle->setTag(52); m_sizeCycle->setScale(0.55f); menu->addChild(m_sizeCycle);
         m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
+        m_cheatIndicatorButton = CCMenuItemLabel::create(makeLabel("CHEAT INDICATOR: ON"), this, menu_selector(UltimateMenuPopup::onToggleCheatIndicator));
+        m_cheatIndicatorButton->setTag(54); m_cheatIndicatorButton->setScale(0.55f); menu->addChild(m_cheatIndicatorButton);
         m_autoPracticeButton = CCMenuItemLabel::create(makeLabel("AUTO PRACTICE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoPractice));
         m_autoPracticeButton->setTag(18); m_autoPracticeButton->setScale(0.55f); menu->addChild(m_autoPracticeButton);
         m_hidePlayerButton = CCMenuItemLabel::create(makeLabel("HIDE PLAYER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHidePlayer));
@@ -264,7 +269,7 @@ protected:
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
                            (tab == 1 && tag >= 18 && tag <= 25) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
-                           (tab == 3 && tag >= 50 && tag <= 53);
+                           (tab == 3 && tag >= 50 && tag <= 54);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -289,6 +294,7 @@ protected:
         if (m_practiceModeButton) m_practiceModeButton->setString(g_practiceModeEnabled ? "PRACTICE MODE: ON" : "PRACTICE MODE: OFF");
         if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
+        if (m_cheatIndicatorButton) m_cheatIndicatorButton->setString(g_cheatIndicatorEnabled ? "CHEAT INDICATOR: ON" : "CHEAT INDICATOR: OFF");
         if (m_autoPracticeButton) m_autoPracticeButton->setString(g_autoPracticeEnabled ? "AUTO PRACTICE: ON" : "AUTO PRACTICE: OFF");
         if (m_hidePlayerButton) m_hidePlayerButton->setString(g_hidePlayerEnabled ? "HIDE PLAYER: ON" : "HIDE PLAYER: OFF");
         if (m_autoRetryButton) m_autoRetryButton->setString(g_autoRetryEnabled ? "AUTO RETRY: ON" : "AUTO RETRY: OFF");
@@ -462,6 +468,11 @@ protected:
         this->refreshLabels();
     }
 
+    void onToggleCheatIndicator(CCObject*) {
+        g_cheatIndicatorEnabled = !g_cheatIndicatorEnabled;
+        this->refreshLabels();
+    }
+
     void onToggleHideButton(CCObject*) {
         g_hideInLevelButton = !g_hideInLevelButton;
         if (auto pl = PlayLayer::get()) {
@@ -617,6 +628,14 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
+        g_cheatIndicatorLabel = CCLabelBMFont::create("GD MENU: CHEATS ACTIVE", "bigFont.fnt");
+        if (g_cheatIndicatorLabel) {
+            g_cheatIndicatorLabel->setScale(0.38f);
+            g_cheatIndicatorLabel->setPosition({winSize.width / 2.f, winSize.height - 18.f});
+            g_cheatIndicatorLabel->setVisible(false);
+            g_cheatIndicatorLabel->setID("gd-ultimate-cheat-indicator"_spr);
+            this->addChild(g_cheatIndicatorLabel, 1000);
+        }
         if (g_autoPracticeEnabled) this->togglePracticeMode(true);
         // Optional in-level menu button.
         if (!g_hideInLevelButton) {
