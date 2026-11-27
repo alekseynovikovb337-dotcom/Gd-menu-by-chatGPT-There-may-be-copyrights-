@@ -218,12 +218,14 @@ protected:
         m_noclipToggle->setPosition({0.f, -5.f});
         menu->addChild(m_noclipToggle);
 
+        m_playerOnlyControls = CCNode::create();
+        content->addChild(m_playerOnlyControls);
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
         m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
         m_speedInput->setPosition({175.f, 15.f});
         m_speedInput->setScale(0.8f);
-        content->addChild(m_speedInput);
+        m_playerOnlyControls->addChild(m_speedInput);
 
         auto apply = CCMenuItemLabel::create(makeLabel("APPLY SPEED"), this,
             menu_selector(UltimateMenuPopup::onApplySpeed));
@@ -291,7 +293,8 @@ protected:
     void switchTab(int tab) {
         if (!m_itemsMenu) return;
         m_itemsMenu->setVisible(true);
-        m_speedInput->setVisible(tab == 0);
+        m_playerOnlyControls->setVisible(tab == 0);
+        m_playerOnlyControls->setEnabled(tab == 0);
         int row = 0;
         const float rowY[] = {96.f, 60.f, 24.f, -12.f, -48.f, -84.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
