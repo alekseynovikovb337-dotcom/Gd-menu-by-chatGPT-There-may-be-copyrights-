@@ -610,10 +610,6 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         PlayLayer::update(dt);
     }
     void retryAfterDeath(float) {
-        if (g_autoRetryEnabled && PlayLayer::get() == this) this->resetLevel();
-    }
-
-    void retryAfterDeath(float) {
         if (g_autoRetryEnabled && PlayLayer::get() == this && !m_isPaused) this->resetLevel();
     }
 
