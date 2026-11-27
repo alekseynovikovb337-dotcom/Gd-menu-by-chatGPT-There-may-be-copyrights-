@@ -6,6 +6,8 @@
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/modify/SliderTouchLogic.hpp>
 #include <Geode/modify/LevelPage.hpp>
+#include <Geode/modify/LevelAreaInnerLayer.hpp>
+#include <Geode/modify/UILayer.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <vector>
 #include <cmath>
@@ -18,6 +20,8 @@ namespace {
     double g_customTPS = 240.0;
     bool g_mainLevelBypassEnabled = false;
     bool g_sliderLimitBypassEnabled = false;
+    bool g_towerLevelBypassEnabled = false;
+    bool g_pauseBufferBypassEnabled = false;
     bool g_tpsInternalTick = false;
     double g_tpsAccumulator = 0.0;
     unsigned g_buttonColorIndex = 0;
@@ -59,6 +63,8 @@ protected:
     CCNode* m_bypassControls = nullptr;
     CCMenuItemLabel* m_mainLevelBypassToggle = nullptr;
     CCMenuItemLabel* m_sliderLimitBypassToggle = nullptr;
+    CCMenuItemLabel* m_towerLevelBypassToggle = nullptr;
+    CCMenuItemLabel* m_pauseBufferBypassToggle = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -159,6 +165,10 @@ protected:
         m_mainLevelBypassToggle->setTag(41); m_mainLevelBypassToggle->setScale(0.55f); menu->addChild(m_mainLevelBypassToggle);
         m_sliderLimitBypassToggle = CCMenuItemLabel::create(makeLabel("SLIDER LIMIT BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleSliderLimitBypass));
         m_sliderLimitBypassToggle->setTag(42); m_sliderLimitBypassToggle->setScale(0.55f); menu->addChild(m_sliderLimitBypassToggle);
+        m_towerLevelBypassToggle = CCMenuItemLabel::create(makeLabel("TOWER LEVEL BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTowerLevelBypass));
+        m_towerLevelBypassToggle->setTag(44); m_towerLevelBypassToggle->setScale(0.55f); menu->addChild(m_towerLevelBypassToggle);
+        m_pauseBufferBypassToggle = CCMenuItemLabel::create(makeLabel("PAUSE BUFFER BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onTogglePauseBufferBypass));
+        m_pauseBufferBypassToggle->setTag(45); m_pauseBufferBypassToggle->setScale(0.55f); menu->addChild(m_pauseBufferBypassToggle);
 
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
@@ -194,7 +204,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 40 && tag <= 43) ||
+                           (tab == 1 && tag >= 40 && tag <= 45) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
@@ -203,7 +213,7 @@ protected:
                 ++row;
             }
         }
-        const char* hints[] = {"Player settings", "TPS bypass", "Floating button appearance"};
+        const char* hints[] = {"Player settings", "TPS, level and pause bypasses", "Floating button appearance"};
         m_tabHint->setString(hints[std::clamp(tab, 0, 2)]);
     }
 
@@ -222,6 +232,8 @@ protected:
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
         if (m_sliderLimitBypassToggle) m_sliderLimitBypassToggle->setString(g_sliderLimitBypassEnabled ? "SLIDER LIMIT BYPASS: ON" : "SLIDER LIMIT BYPASS: OFF");
+        if (m_towerLevelBypassToggle) m_towerLevelBypassToggle->setString(g_towerLevelBypassEnabled ? "TOWER LEVEL BYPASS: ON" : "TOWER LEVEL BYPASS: OFF");
+        if (m_pauseBufferBypassToggle) m_pauseBufferBypassToggle->setString(g_pauseBufferBypassEnabled ? "PAUSE BUFFER BYPASS: ON" : "PAUSE BUFFER BYPASS: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
         if (m_opacityCycle) m_opacityCycle->setString(fmt::format("OPACITY: {}%", static_cast<int>(g_buttonOpacities[g_buttonOpacityIndex]) * 100 / 255).c_str());
         if (m_sizeCycle) m_sizeCycle->setString(fmt::format("SIZE: {}%", static_cast<int>(g_buttonScales[g_buttonScaleIndex] * 100)).c_str());
@@ -245,6 +257,16 @@ protected:
 
     void onToggleSliderLimitBypass(CCObject*) {
         g_sliderLimitBypassEnabled = !g_sliderLimitBypassEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleTowerLevelBypass(CCObject*) {
+        g_towerLevelBypassEnabled = !g_towerLevelBypassEnabled;
+        this->refreshLabels();
+    }
+
+    void onTogglePauseBufferBypass(CCObject*) {
+        g_pauseBufferBypassEnabled = !g_pauseBufferBypassEnabled;
         this->refreshLabels();
     }
 
@@ -474,6 +496,32 @@ class $modify(GDUltimateMainLevelBypass, LevelPage) {
         m_level->m_requiredCoins = 0;
         LevelPage::onPlay(sender);
         m_level->m_requiredCoins = requiredCoins;
+    }
+};
+
+class $modify(GDUltimateTowerLevelBypass, LevelAreaInnerLayer) {
+    bool init(bool p0) {
+        if (!LevelAreaInnerLayer::init(p0)) return false;
+        if (!g_towerLevelBypassEnabled) return true;
+        auto container = this->getChildByType<CCNode>(1);
+        if (!container) return true;
+        auto menu = container->getChildByType<CCMenu>(0);
+        if (!menu) return true;
+        for (auto child : CCArrayExt<CCMenuItem*>(menu->getChildren())) {
+            if (child) child->setEnabled(true);
+        }
+        return true;
+    }
+};
+
+class $modify(GDUltimatePauseBufferBypass, UILayer) {
+    void onPause(CCObject* sender) {
+        if (g_pauseBufferBypassEnabled && m_gameLayer) m_gameLayer->m_gameState.m_pauseCounter = 0;
+        UILayer::onPause(sender);
+    }
+    void handleKeypress(enumKeyCodes key, bool down) {
+        if (g_pauseBufferBypassEnabled && m_gameLayer) m_gameLayer->m_gameState.m_pauseCounter = 0;
+        UILayer::handleKeypress(key, down);
     }
 };
 
