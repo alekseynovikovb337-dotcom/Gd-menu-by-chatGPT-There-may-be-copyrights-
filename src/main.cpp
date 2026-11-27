@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <cstdint>
 #include <vector>
+#include <cmath>
 
 
 using namespace geode::prelude;
@@ -31,6 +32,10 @@ namespace {
     std::vector<Re4Physics> g_re4Physics;
     uint64_t g_re4Frame = 0;
     bool g_re4Recording = false;
+    bool g_stepperEnabled = false;
+    bool g_stepRequested = false;
+    unsigned g_buttonColorIndex = 0;
+    const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
 
     template <class T>
     void writeLE(std::ofstream& out, T value) {
@@ -83,6 +88,9 @@ protected:
     CCMenuItemLabel* m_recordToggle = nullptr;
     CCMenu* m_itemsMenu = nullptr;
     CCLabelBMFont* m_tabHint = nullptr;
+    CCMenuItemLabel* m_stepperToggle = nullptr;
+    CCMenuItemLabel* m_stepOnce = nullptr;
+    CCMenuItemLabel* m_colorCycle = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
