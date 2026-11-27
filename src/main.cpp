@@ -7,6 +7,7 @@
 #include <Geode/modify/SliderTouchLogic.hpp>
 #include <Geode/modify/LevelPage.hpp>
 #include <Geode/modify/LevelAreaInnerLayer.hpp>
+#include <Geode/modify/GameStatsManager.hpp>
 #include <Geode/modify/UILayer.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <vector>
@@ -22,6 +23,7 @@ namespace {
     bool g_sliderLimitBypassEnabled = false;
     bool g_towerLevelBypassEnabled = false;
     bool g_pauseBufferBypassEnabled = false;
+    bool g_freeShoppingEnabled = false;
     bool g_tpsInternalTick = false;
     double g_tpsAccumulator = 0.0;
     unsigned g_buttonColorIndex = 0;
@@ -65,6 +67,7 @@ protected:
     CCMenuItemLabel* m_sliderLimitBypassToggle = nullptr;
     CCMenuItemLabel* m_towerLevelBypassToggle = nullptr;
     CCMenuItemLabel* m_pauseBufferBypassToggle = nullptr;
+    CCMenuItemLabel* m_freeShoppingToggle = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -169,6 +172,8 @@ protected:
         m_towerLevelBypassToggle->setTag(44); m_towerLevelBypassToggle->setScale(0.55f); menu->addChild(m_towerLevelBypassToggle);
         m_pauseBufferBypassToggle = CCMenuItemLabel::create(makeLabel("PAUSE BUFFER BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onTogglePauseBufferBypass));
         m_pauseBufferBypassToggle->setTag(45); m_pauseBufferBypassToggle->setScale(0.55f); menu->addChild(m_pauseBufferBypassToggle);
+        m_freeShoppingToggle = CCMenuItemLabel::create(makeLabel("FREE SHOPPING: OFF"), this, menu_selector(UltimateMenuPopup::onToggleFreeShopping));
+        m_freeShoppingToggle->setTag(46); m_freeShoppingToggle->setScale(0.55f); menu->addChild(m_freeShoppingToggle);
 
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
@@ -204,7 +209,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 40 && tag <= 45) ||
+                           (tab == 1 && tag >= 40 && tag <= 46) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
@@ -234,6 +239,7 @@ protected:
         if (m_sliderLimitBypassToggle) m_sliderLimitBypassToggle->setString(g_sliderLimitBypassEnabled ? "SLIDER LIMIT BYPASS: ON" : "SLIDER LIMIT BYPASS: OFF");
         if (m_towerLevelBypassToggle) m_towerLevelBypassToggle->setString(g_towerLevelBypassEnabled ? "TOWER LEVEL BYPASS: ON" : "TOWER LEVEL BYPASS: OFF");
         if (m_pauseBufferBypassToggle) m_pauseBufferBypassToggle->setString(g_pauseBufferBypassEnabled ? "PAUSE BUFFER BYPASS: ON" : "PAUSE BUFFER BYPASS: OFF");
+        if (m_freeShoppingToggle) m_freeShoppingToggle->setString(g_freeShoppingEnabled ? "FREE SHOPPING: ON" : "FREE SHOPPING: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
         if (m_opacityCycle) m_opacityCycle->setString(fmt::format("OPACITY: {}%", static_cast<int>(g_buttonOpacities[g_buttonOpacityIndex]) * 100 / 255).c_str());
         if (m_sizeCycle) m_sizeCycle->setString(fmt::format("SIZE: {}%", static_cast<int>(g_buttonScales[g_buttonScaleIndex] * 100)).c_str());
@@ -267,6 +273,11 @@ protected:
 
     void onTogglePauseBufferBypass(CCObject*) {
         g_pauseBufferBypassEnabled = !g_pauseBufferBypassEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleFreeShopping(CCObject*) {
+        g_freeShoppingEnabled = !g_freeShoppingEnabled;
         this->refreshLabels();
     }
 
@@ -537,6 +548,19 @@ class $modify(GDUltimateSliderLimitBypass, SliderTouchLogic) {
         else m_thumb->setPositionX(position.x);
         m_slider->updateBar();
         m_thumb->activate();
+    }
+};
+
+class $modify(GDUltimateFreeShopping, GameStatsManager) {
+    bool purchaseItem(int index) {
+        if (!g_freeShoppingEnabled) return GameStatsManager::purchaseItem(index);
+        auto item = this->getStoreItem(index);
+        if (!item) return GameStatsManager::purchaseItem(index);
+        auto originalPrice = static_cast<int>(item->m_price);
+        item->m_price = 0;
+        bool purchased = GameStatsManager::purchaseItem(index);
+        item->m_price = originalPrice;
+        return purchased;
     }
 };
 
