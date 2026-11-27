@@ -135,22 +135,11 @@ class $modify(GDUltimateMenuLayer, MenuLayer) {
         menu->updateLayout();
         return true;
     }
-    void update(float dt) {
-        float speed = 1.f;
-        if (Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
-            speed = static_cast<float>(Mod::get()->getSettingValue<double>("speed-multiplier"));
-        }
-        PlayLayer::update(dt * std::clamp(speed, 0.5f, 3.0f));
-    }
-
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
 };
 
 class $modify(GDUltimatePlayerObject, PlayerObject) {
     void update(float dt) {
-        if (Mod::get()->getSettingValue<bool>("low-gravity")) {
-            dt *= 0.65f;
-        }
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         PlayerObject::update(dt);
@@ -178,5 +167,13 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         this->addChild(menu, 999);
         return true;
     }
+    void update(float dt) {
+        float speed = 1.f;
+        if (Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
+            speed = static_cast<float>(Mod::get()->getSettingValue<double>("speed-multiplier"));
+        }
+        PlayLayer::update(dt * std::clamp(speed, 0.5f, 3.0f));
+    }
+
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
 };
