@@ -518,9 +518,6 @@ class $modify(GDUltimateMenuLayer, MenuLayer) {
         return true;
     }
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
-    void onStepHud(CCObject*) {
-        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
-    }
 };
 
 
@@ -602,6 +599,9 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         stepMenu->addChild(g_stepHudButton);
         this->addChild(stepMenu, 1000);
         return true;
+    }
+    void onStepHud(CCObject*) {
+        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
     }
     void update(float dt) {
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
