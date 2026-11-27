@@ -634,7 +634,9 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             }
         }
 
-        PlayLayer::update(dt);
+        // A requested step advances exactly one deterministic simulation tick.
+        // Use a fixed 1/240 s tick instead of the variable render-frame dt.
+        PlayLayer::update(g_stepperEnabled ? (1.0f / 240.0f) : dt);
         if (g_stepperEnabled && g_stepFramesRemaining > 0) --g_stepFramesRemaining;
 
         if (g_re4Playback) {
