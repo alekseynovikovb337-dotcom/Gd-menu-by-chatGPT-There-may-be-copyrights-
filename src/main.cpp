@@ -205,7 +205,7 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {96.f, 60.f, 24.f, -12.f, -48.f, -84.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
@@ -216,7 +216,7 @@ protected:
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
-                item->setPosition({0.f, rowY[std::min(row, 5)]});
+                item->setPosition({0.f, rowY[std::min(row, 6)]});
                 ++row;
             }
         }
