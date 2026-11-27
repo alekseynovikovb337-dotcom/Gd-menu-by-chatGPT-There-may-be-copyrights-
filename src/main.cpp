@@ -251,14 +251,20 @@ protected:
 
     void onCycleColor(CCObject*) {
         g_buttonColorIndex = (g_buttonColorIndex + 1) % (sizeof(g_buttonColors) / sizeof(g_buttonColors[0]));
+        refreshButtonAppearance();
+        this->refreshLabels();
     }
 
     void onCycleOpacity(CCObject*) {
         g_buttonOpacityIndex = (g_buttonOpacityIndex + 1) % (sizeof(g_buttonOpacities) / sizeof(g_buttonOpacities[0]));
+        refreshButtonAppearance();
+        this->refreshLabels();
     }
 
     void onCycleSize(CCObject*) {
         g_buttonScaleIndex = (g_buttonScaleIndex + 1) % (sizeof(g_buttonScales) / sizeof(g_buttonScales[0]));
+        refreshButtonAppearance();
+        this->refreshLabels();
     }
 
     void onToggleHideButton(CCObject*) {
@@ -293,6 +299,24 @@ public:
 
 static void openUltimateMenu() {
     UltimateMenuPopup::create()->show();
+}
+
+static void applyButtonAppearance(CCNode* node) {
+    if (!node) return;
+    if (node->getID() == "gd-ultimate-menu-button"_spr) {
+        node->setColor(g_buttonColors[g_buttonColorIndex]);
+        node->setOpacity(g_buttonOpacities[g_buttonOpacityIndex]);
+        node->setScale(g_buttonScales[g_buttonScaleIndex]);
+    }
+    for (auto child : CCArrayExt<CCNode*>(node->getChildren())) {
+        applyButtonAppearance(child);
+    }
+}
+
+static void refreshButtonAppearance() {
+    if (auto scene = CCDirector::sharedDirector()->getRunningScene()) {
+        applyButtonAppearance(scene);
+    }
 }
 
 static CCMenuItemSpriteExtra* createUltimateButton(CCNode* target, SEL_MenuHandler selector) {
