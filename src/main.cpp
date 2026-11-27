@@ -4,11 +4,7 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
-#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
-#include <fstream>
-#include <filesystem>
-#include <cstdint>
 #include <vector>
 #include <cmath>
 
@@ -16,39 +12,6 @@
 using namespace geode::prelude;
 
 namespace {
-    struct Re4Input {
-        uint64_t frame;
-        uint8_t down;
-        int32_t button;
-        uint8_t player2;
-    };
-    struct Re4Physics {
-        uint64_t frame;
-        float x;
-        float y;
-        double yAccel;
-        uint8_t player2;
-    };
-    std::vector<Re4Input> g_re4Inputs;
-    std::vector<Re4Physics> g_re4Physics;
-    uint64_t g_re4Frame = 0;
-    bool g_re4Recording = false;
-    bool g_stepperEnabled = false;
-    int g_stepFramesRemaining = 0;
-    CCMenuItemLabel* g_stepHudButton = nullptr;
-    bool g_tpsBypassEnabled = false;
-    bool g_tpsInternalTick = false;
-    double g_tpsAccumulator = 0.0;
-    unsigned g_buttonColorIndex = 0;
-    unsigned g_buttonOpacityIndex = 0;
-    unsigned g_buttonScaleIndex = 1;
-    bool g_hideInLevelButton = false;
-    const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
-    const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
-    const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
-    std::vector<Re4Input> g_re4PlaybackInputs;
-    size_t g_re4PlaybackCursor = 0;
-    bool g_re4Playback = false;
     PlayerObject* g_gravityTrackedP1 = nullptr;
     PlayerObject* g_gravityTrackedP2 = nullptr;
     double g_gravityBaseP1 = 0.0;
@@ -56,89 +19,6 @@ namespace {
     double g_gravityLastP1 = 0.0;
     double g_gravityLastP2 = 0.0;
 
-    template <class T>
-    void writeLE(std::ofstream& out, T value) {
-        auto bytes = reinterpret_cast<const char*>(&value);
-        out.write(bytes, sizeof(T));
-    }
-
-    bool saveRe4Replay() {
-        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
-        std::error_code ec;
-        std::filesystem::create_directories(path.parent_path(), ec);
-        std::ofstream out(path, std::ios::binary);
-        if (!out) return false;
-        out.write("RE4", 3);
-        writeLE<float>(out, 240.0f);
-        writeLE<uint64_t>(out, static_cast<uint64_t>(g_re4Physics.size()));
-        for (auto const& p : g_re4Physics) {
-            writeLE<uint64_t>(out, p.frame);
-            writeLE<float>(out, p.x);
-            writeLE<float>(out, p.y);
-            writeLE<double>(out, p.yAccel);
-            writeLE<uint8_t>(out, p.player2);
-        }
-        writeLE<uint64_t>(out, static_cast<uint64_t>(g_re4Inputs.size()));
-        for (auto const& i : g_re4Inputs) {
-            writeLE<uint64_t>(out, i.frame);
-            writeLE<uint8_t>(out, i.down);
-            writeLE<int32_t>(out, i.button);
-            writeLE<uint8_t>(out, i.player2);
-        }
-        return out.good();
-    }
-
-    template <class T>
-    bool readLE(std::ifstream& in, T& value) {
-        in.read(reinterpret_cast<char*>(&value), sizeof(T));
-        return in.good();
-    }
-
-    bool loadRe4Replay() {
-        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
-        std::ifstream in(path, std::ios::binary);
-        if (!in) return false;
-        char magic[3]{};
-        in.read(magic, 3);
-        float fps = 0.f;
-        uint64_t physicsCount = 0;
-        if (!in || std::string(magic, 3) != "RE4" || !readLE(in, fps) ||
-            !std::isfinite(fps) || fps < 1.f || fps > 1000.f ||
-            !readLE(in, physicsCount) || physicsCount > 5000000) return false;
-        for (uint64_t n = 0; n < physicsCount; ++n) {
-            uint64_t frame; float x, y; double accel; uint8_t p2;
-            if (!readLE(in, frame) || !readLE(in, x) || !readLE(in, y) ||
-                !readLE(in, accel) || !readLE(in, p2) ||
-                !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(accel) || p2 > 1) return false;
-        }
-        uint64_t count = 0;
-        if (!readLE(in, count) || count == 0 || count > 5000000) return false;
-        std::vector<Re4Input> parsed;
-        parsed.reserve(static_cast<size_t>(count));
-        uint64_t lastFrame = 0;
-        for (uint64_t n = 0; n < count; ++n) {
-            Re4Input event{};
-            if (!readLE(in, event.frame) || !readLE(in, event.down) ||
-                !readLE(in, event.button) || !readLE(in, event.player2) ||
-                event.down > 1 || event.player2 > 1 || event.button < 0 ||
-                event.button > 16 || (n && event.frame < lastFrame)) return false;
-            lastFrame = event.frame;
-            parsed.push_back(event);
-        }
-        if (in.peek() != std::ifstream::traits_type::eof()) return false;
-        g_re4PlaybackInputs = std::move(parsed);
-        g_re4PlaybackCursor = 0;
-        return true;
-    }
-
-    void resetRe4Recorder() {
-        g_re4Inputs.clear();
-        g_re4Physics.clear();
-        g_re4Frame = 0;
-        g_re4PlaybackInputs.clear();
-        g_re4PlaybackCursor = 0;
-        g_re4Playback = false;
-    }
 }
 
 class UltimateMenuPopup : public geode::Popup {
@@ -150,15 +30,9 @@ protected:
     CCMenuItemLabel* m_deathToggle = nullptr;
     CCMenuItemLabel* m_noclipToggle = nullptr;
     geode::ScrollLayer* m_scroll = nullptr;
-    CCMenuItemLabel* m_recordToggle = nullptr;
     CCMenu* m_itemsMenu = nullptr;
     CCLabelBMFont* m_tabHint = nullptr;
-    CCMenuItemLabel* m_stepperToggle = nullptr;
-    CCMenuItemLabel* m_stepOnce = nullptr;
-    CCMenuItemLabel* m_stepFive = nullptr;
-    CCMenuItemLabel* m_stepTen = nullptr;
     CCMenuItemLabel* m_colorCycle = nullptr;
-    CCMenuItemLabel* m_replayPlay = nullptr;
     CCMenuItemLabel* m_opacityCycle = nullptr;
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
@@ -237,35 +111,6 @@ protected:
         apply->setPosition({0.f, -45.f});
         menu->addChild(apply);
 
-        m_recordToggle = CCMenuItemLabel::create(makeLabel("RE4 recording: OFF"), this,
-            menu_selector(UltimateMenuPopup::onToggleRecording));
-        m_recordToggle->setTag(20);
-        m_recordToggle->setScale(0.55f);
-        m_recordToggle->setPosition({0.f, -85.f});
-        menu->addChild(m_recordToggle);
-
-        auto saveReplay = CCMenuItemLabel::create(makeLabel("SAVE .RE4"), this,
-            menu_selector(UltimateMenuPopup::onSaveReplay));
-        saveReplay->setTag(21);
-        saveReplay->setScale(0.55f);
-        saveReplay->setPosition({0.f, -125.f});
-        menu->addChild(saveReplay);
-
-        auto loadReplay = CCMenuItemLabel::create(makeLabel("LOAD .RE4"), this, menu_selector(UltimateMenuPopup::onLoadReplay));
-        loadReplay->setTag(22); loadReplay->setScale(0.55f); loadReplay->setPosition({0.f, -165.f}); menu->addChild(loadReplay);
-        m_replayPlay = CCMenuItemLabel::create(makeLabel("PLAY REPLAY"), this, menu_selector(UltimateMenuPopup::onPlayReplay));
-        m_replayPlay->setTag(23); m_replayPlay->setScale(0.55f); m_replayPlay->setPosition({0.f, -205.f}); menu->addChild(m_replayPlay);
-        auto stopReplay = CCMenuItemLabel::create(makeLabel("STOP REPLAY"), this, menu_selector(UltimateMenuPopup::onStopReplay));
-        stopReplay->setTag(24); stopReplay->setScale(0.55f); stopReplay->setPosition({0.f, -245.f}); menu->addChild(stopReplay);
-
-        m_stepperToggle = CCMenuItemLabel::create(makeLabel("Frame Stepper: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStepper));
-        m_stepperToggle->setTag(30); m_stepperToggle->setScale(0.55f); m_stepperToggle->setPosition({0.f, 115.f}); menu->addChild(m_stepperToggle);
-        m_stepOnce = CCMenuItemLabel::create(makeLabel("STEP +1 FRAME"), this, menu_selector(UltimateMenuPopup::onStepOnce));
-        m_stepOnce->setTag(31); m_stepOnce->setScale(0.55f); m_stepOnce->setPosition({0.f, 65.f}); menu->addChild(m_stepOnce);
-        m_stepFive = CCMenuItemLabel::create(makeLabel("STEP +5 FRAMES"), this, menu_selector(UltimateMenuPopup::onStepFive));
-        m_stepFive->setTag(32); m_stepFive->setScale(0.55f); menu->addChild(m_stepFive);
-        m_stepTen = CCMenuItemLabel::create(makeLabel("STEP +10 FRAMES"), this, menu_selector(UltimateMenuPopup::onStepTen));
-        m_stepTen->setTag(33); m_stepTen->setScale(0.55f); menu->addChild(m_stepTen);
         m_colorCycle = CCMenuItemLabel::create(makeLabel("BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
         m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); menu->addChild(m_colorCycle);
         m_opacityCycle = CCMenuItemLabel::create(makeLabel("BUTTON OPACITY"), this, menu_selector(UltimateMenuPopup::onCycleOpacity));
@@ -286,13 +131,13 @@ protected:
         auto tabs = CCMenu::create();
         tabs->setPosition({center.x, 25.f});
         m_mainLayer->addChild(tabs, 6);
-        const char* tabNames[] = {"PLAYER", "REPLAY", "STEPPER", "BYPASS", "INTERFACE"};
-        for (int i = 0; i < 5; ++i) {
+        const char* tabNames[] = {"PLAYER", "BYPASS", "INTERFACE"};
+        for (int i = 0; i < 3; ++i) {
             auto label = CCLabelBMFont::create(tabNames[i], "bigFont.fnt");
             auto item = CCMenuItemLabel::create(label, this, menu_selector(UltimateMenuPopup::onTab));
             item->setTag(i);
             item->setScale(0.36f);
-            item->setPosition({-142.f + i * 71.f, 0.f});
+            item->setPosition({-100.f + i * 100.f, 0.f});
             tabs->addChild(item);
         }
         this->switchTab(0);
@@ -311,10 +156,8 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 20 && tag <= 24) ||
-                           (tab == 2 && tag >= 30 && tag <= 33) ||
-                           (tab == 3 && tag == 40) ||
-                           (tab == 4 && tag >= 50 && tag <= 53);
+                           (tab == 1 && tag == 40) ||
+                           (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -322,13 +165,8 @@ protected:
                 ++row;
             }
         }
-        const char* hints[] = {
-            "Player settings", "RE4: record, save, load and playback",
-            "Toggle step mode, then tap STEP +1 FRAME",
-            "TPS Bypass: fixed 240 Hz simulation ticks",
-            "Cycle the floating button accent color"
-        };
-        m_tabHint->setString(hints[std::clamp(tab, 0, 4)]);
+        const char* hints[] = {"Player settings", "TPS bypass", "Floating button appearance"};
+        m_tabHint->setString(hints[std::clamp(tab, 0, 2)]);
     }
 
     void onTab(CCObject* sender) {
@@ -341,9 +179,6 @@ protected:
         m_jumpToggle->setString(Mod::get()->getSettingValue<bool>("jump-effect") ? "Jump effect: ON" : "Jump effect: OFF");
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
-        if (m_recordToggle) m_recordToggle->setString(g_re4Recording ? "RE4 recording: ON" : "RE4 recording: OFF");
-        if (m_stepperToggle) m_stepperToggle->setString(g_stepperEnabled ? "Frame Stepper: ON" : "Frame Stepper: OFF");
-        if (m_replayPlay) m_replayPlay->setString(g_re4Playback ? "PLAYING .RE4" : "PLAY REPLAY");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "TPS BYPASS 240: ON" : "TPS BYPASS 240: OFF");
         if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1).c_str());
@@ -362,90 +197,10 @@ protected:
         this->refreshLabels();
     }
 
-    void onToggleRecording(CCObject*) {
-        if (!g_re4Recording) {
-            resetRe4Recorder();
-            g_re4Recording = true;
-            FLAlertLayer::create("RE4 Recorder", "Recording started. Play the level, then save the replay.", "OK")->show();
-        } else {
-            g_re4Recording = false;
-            FLAlertLayer::create("RE4 Recorder", "Recording stopped. Press SAVE .RE4 to export.", "OK")->show();
-        }
-        this->refreshLabels();
-    }
-
-    void onSaveReplay(CCObject*) {
-        if (g_re4Recording) {
-            g_re4Recording = false;
-            this->refreshLabels();
-        }
-        if (g_re4Inputs.empty()) {
-            FLAlertLayer::create("RE4 Recorder", "No inputs recorded yet. Start recording and play first.", "OK")->show();
-            return;
-        }
-        if (!saveRe4Replay()) {
-            FLAlertLayer::create("RE4 export failed", "Could not write the replay file. Check the Geode log.", "OK")->show();
-            return;
-        }
-        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
-        FLAlertLayer::create("RE4 saved", fmt::format("Saved {} inputs to:\n{}", g_re4Inputs.size(), path.string()), "OK")->show();
-    }
-
-    void onLoadReplay(CCObject*) {
-        if (!loadRe4Replay()) {
-            FLAlertLayer::create("RE4 import", "Could not load last-replay.re4 from the mod save folder. Check file format and try again.", "OK")->show();
-            return;
-        }
-        FLAlertLayer::create("RE4 import", fmt::format("Loaded {} input events.", g_re4PlaybackInputs.size()), "OK")->show();
-    }
-
-    void onPlayReplay(CCObject*) {
-        // Use the just-recorded macro directly; exporting a file is optional.
-        if (!g_re4Inputs.empty()) {
-            g_re4PlaybackInputs = g_re4Inputs;
-        } else if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
-            FLAlertLayer::create("Replay", "Record a macro first or load last-replay.re4.", "OK")->show();
-            return;
-        }
-        auto pl = PlayLayer::get();
-        if (!pl) {
-            FLAlertLayer::create("Replay", "Open a level before playback.", "OK")->show();
-            return;
-        }
-        pl->resetLevel();
-        g_re4Frame = 0;
-        g_re4PlaybackCursor = 0;
-        g_re4Playback = true;
-        g_re4Recording = false;
-        this->refreshLabels();
-    }
-
-    void onStopReplay(CCObject*) {
-        g_re4Playback = false;
-        this->refreshLabels();
-    }
-
-    void onToggleStepper(CCObject*) {
-        g_stepperEnabled = !g_stepperEnabled;
-        g_stepFramesRemaining = 0;
-        if (g_stepHudButton) g_stepHudButton->setVisible(g_stepperEnabled);
-        this->refreshLabels();
-    }
-
     void onToggleTpsBypass(CCObject*) {
         g_tpsBypassEnabled = !g_tpsBypassEnabled;
         g_tpsAccumulator = 0.0;
         this->refreshLabels();
-    }
-
-    void onStepOnce(CCObject*) {
-        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
-    }
-    void onStepFive(CCObject*) {
-        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 5, 600);
-    }
-    void onStepTen(CCObject*) {
-        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 10, 600);
     }
 
     void onCycleColor(CCObject*) {
@@ -573,10 +328,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
 class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
-        resetRe4Recorder();
-        g_re4Recording = false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        // Hiding the main in-level menu must not suppress the Frame Stepper HUD.
+        // Optional in-level menu button.
         if (!g_hideInLevelButton) {
             auto menu = CCMenu::create();
             if (menu) {
@@ -592,24 +345,11 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             }
         }
 
-        // Dedicated HUD step button remains tappable after closing the popup.
-        auto stepMenu = CCMenu::create();
-        stepMenu->setPosition({winSize.width - 72.f, 42.f});
-        stepMenu->setZOrder(1000);
-        auto stepLabel = CCLabelBMFont::create("STEP +1", "bigFont.fnt");
-        g_stepHudButton = CCMenuItemLabel::create(stepLabel, this, menu_selector(GDUltimatePlayLayer::onStepHud));
-        g_stepHudButton->setScale(0.42f);
-        g_stepHudButton->setVisible(g_stepperEnabled);
-        stepMenu->addChild(g_stepHudButton);
-        this->addChild(stepMenu, 1000);
         return true;
-    }
-    void onStepHud(CCObject*) {
-        if (g_stepperEnabled) g_stepFramesRemaining = std::min(g_stepFramesRemaining + 1, 600);
     }
     void update(float dt) {
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
-        if (g_tpsBypassEnabled && !g_tpsInternalTick && !g_stepperEnabled) {
+        if (g_tpsBypassEnabled && !g_tpsInternalTick) {
             g_tpsAccumulator += std::max(0.0f, dt);
             constexpr double fixedStep = 1.0 / 240.0;
             int ticks = 0;
@@ -622,44 +362,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             }
             return;
         }
-        // In step mode the simulation is frozen until the HUD/popup requests ticks.
-        if (g_stepperEnabled && g_stepFramesRemaining <= 0) return;
-
-        // Feed recorded input BEFORE the physics tick.
-        if (g_re4Playback) {
-            while (g_re4PlaybackCursor < g_re4PlaybackInputs.size() &&
-                   g_re4PlaybackInputs[g_re4PlaybackCursor].frame <= g_re4Frame) {
-                auto const& event = g_re4PlaybackInputs[g_re4PlaybackCursor++];
-                this->handleButton(event.down != 0, event.button, event.player2 == 0);
-            }
-        }
-
-        // A requested step advances exactly one deterministic simulation tick.
-        // Use a fixed 1/240 s tick instead of the variable render-frame dt.
-        PlayLayer::update(g_stepperEnabled ? (1.0f / 240.0f) : dt);
-        if (g_stepperEnabled && g_stepFramesRemaining > 0) --g_stepFramesRemaining;
-
-        if (g_re4Playback) {
-            ++g_re4Frame;
-            if (g_re4PlaybackCursor >= g_re4PlaybackInputs.size()) {
-                // Release both players' inputs so a replay ending on a held press
-                // cannot leave the game stuck in that input state.
-                for (int button = 0; button <= 16; ++button) {
-                    this->handleButton(false, button, true);
-                    this->handleButton(false, button, false);
-                }
-                g_re4Playback = false;
-            }
-        }
-        if (g_re4Recording) {
-            ++g_re4Frame;
-            auto recordPhysics = [this](PlayerObject* player, bool p2) {
-                if (!player || player->m_isDead) return;
-                g_re4Physics.push_back({g_re4Frame, player->getPositionX(), player->getPositionY(), 0.0, static_cast<uint8_t>(p2)});
-            };
-            recordPhysics(m_player1, false);
-            recordPhysics(m_player2, true);
-        }
+        PlayLayer::update(dt);
     }
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
@@ -672,19 +375,6 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
 };
 
-class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
-    void handleButton(bool down, int button, bool isPlayer1) {
-        if (g_re4Recording && !g_re4Playback && static_cast<GJBaseGameLayer*>(PlayLayer::get()) == this) {
-            g_re4Inputs.push_back({
-                g_re4Frame,
-                static_cast<uint8_t>(down),
-                static_cast<int32_t>(button),
-                static_cast<uint8_t>(!isPlayer1)
-            });
-        }
-        GJBaseGameLayer::handleButton(down, button, isPlayer1);
-    }
-};
 class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
     void update(float dt) {
         if (PlayLayer::get() && Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
