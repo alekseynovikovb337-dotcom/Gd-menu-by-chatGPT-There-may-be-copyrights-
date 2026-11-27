@@ -55,6 +55,9 @@ namespace {
 }
 
 static void refreshButtonAppearance();
+static bool shouldShowHudLabels() {
+    return g_statusLabelEnabled || g_labelCpsEnabled || g_labelTpsEnabled || g_labelSpeedEnabled || g_labelProgressEnabled;
+}
 
 class UltimateMenuPopup : public geode::Popup {
 protected:
@@ -404,13 +407,16 @@ protected:
             case 63: g_labelSpeedEnabled = !g_labelSpeedEnabled; break;
             case 64: g_labelProgressEnabled = !g_labelProgressEnabled; break;
         }
+        if (auto pl = PlayLayer::get()) {
+            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(shouldShowHudLabels());
+        }
         this->refreshLabels();
     }
 
     void onToggleStatusLabel(CCObject*) {
         g_statusLabelEnabled = !g_statusLabelEnabled;
         if (auto pl = PlayLayer::get()) {
-            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(g_statusLabelEnabled);
+            if (auto label = pl->getChildByID("gd-ultimate-status-label"_spr)) label->setVisible(shouldShowHudLabels());
         }
         this->refreshLabels();
     }
@@ -556,7 +562,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             statusLabel->setAnchorPoint({1.f, 1.f});
             statusLabel->setPosition({winSize.width - 12.f, winSize.height - 70.f});
             statusLabel->setScale(0.42f);
-            statusLabel->setVisible(g_statusLabelEnabled);
+            statusLabel->setVisible(shouldShowHudLabels());
             statusLabel->setZOrder(1000);
             this->addChild(statusLabel, 1000);
         }
