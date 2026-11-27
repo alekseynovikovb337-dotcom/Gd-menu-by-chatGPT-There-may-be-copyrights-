@@ -550,7 +550,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
     void update(float dt) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
-        this->m_hasTrail = !g_noTrailEnabled;
+        if (this->m_ghostTrail) this->m_ghostTrail->setVisible(!g_noTrailEnabled);
+        if (this->m_waveTrail) this->m_waveTrail->setVisible(!g_noTrailEnabled);
         this->m_hasGlow = !g_noPlayerGlowEnabled;
         if (auto pl = PlayLayer::get()) {
             bool isP1 = this == pl->m_player1;
