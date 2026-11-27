@@ -2,6 +2,7 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
+#include <Geode/modify/CCScheduler.hpp>
 
 using namespace geode::prelude;
 
@@ -12,9 +13,10 @@ protected:
     CCMenuItemLabel* m_gravityToggle = nullptr;
     CCMenuItemLabel* m_jumpToggle = nullptr;
     CCMenuItemLabel* m_deathToggle = nullptr;
+    CCMenuItemLabel* m_noclipToggle = nullptr;
 
     bool init() {
-        if (!Popup::init(300.f, 218.f)) return false;
+        if (!Popup::init(300.f, 250.f)) return false;
         this->setTitle("GD Ultimate Menu");
 
         auto layerSize = m_mainLayer->getContentSize();
@@ -55,17 +57,24 @@ protected:
         m_deathToggle->setPosition({0.f, -40.f});
         menu->addChild(m_deathToggle);
 
+        m_noclipToggle = CCMenuItemLabel::create(makeLabel("NoClip: OFF"), this,
+            menu_selector(UltimateMenuPopup::onToggle));
+        m_noclipToggle->setTag(4);
+        m_noclipToggle->setScale(0.55f);
+        m_noclipToggle->setPosition({0.f, -75.f});
+        menu->addChild(m_noclipToggle);
+
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
         m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
-        m_speedInput->setPosition({center.x, center.y - 76.f});
+        m_speedInput->setPosition({center.x, center.y - 105.f});
         m_speedInput->setScale(0.8f);
         m_mainLayer->addChild(m_speedInput);
 
         auto apply = CCMenuItemLabel::create(makeLabel("APPLY SPEED"), this,
             menu_selector(UltimateMenuPopup::onApplySpeed));
         apply->setScale(0.55f);
-        apply->setPosition({0.f, -100.f});
+        apply->setPosition({0.f, -140.f});
         menu->addChild(apply);
 
         this->refreshLabels();
@@ -77,6 +86,7 @@ protected:
         m_gravityToggle->setString(Mod::get()->getSettingValue<bool>("low-gravity") ? "Low gravity: ON" : "Low gravity: OFF");
         m_jumpToggle->setString(Mod::get()->getSettingValue<bool>("jump-effect") ? "Jump effect: ON" : "Jump effect: OFF");
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
+        m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
     }
 
     void onToggle(CCObject* sender) {
@@ -85,6 +95,7 @@ protected:
             case 1: Mod::get()->setSettingValue("low-gravity", !Mod::get()->getSettingValue<bool>("low-gravity")); break;
             case 2: Mod::get()->setSettingValue("jump-effect", !Mod::get()->getSettingValue<bool>("jump-effect")); break;
             case 3: Mod::get()->setSettingValue("death-effect", !Mod::get()->getSettingValue<bool>("death-effect")); break;
+            case 4: Mod::get()->setSettingValue("noclip-enabled", !Mod::get()->getSettingValue<bool>("noclip-enabled")); break;
         }
         this->refreshLabels();
     }
@@ -167,13 +178,23 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         this->addChild(menu, 999);
         return true;
     }
-    void update(float dt) {
-        float speed = 1.f;
-        if (Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
-            speed = static_cast<float>(Mod::get()->getSettingValue<double>("speed-multiplier"));
+    void destroyPlayer(PlayerObject* player, GameObject* object) {
+        if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
+            player && (player == m_player1 || player == m_player2)) {
+            return;
         }
-        PlayLayer::update(dt * std::clamp(speed, 0.5f, 3.0f));
+        PlayLayer::destroyPlayer(player, object);
     }
 
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
+};
+
+class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
+    void update(float dt) {
+        if (PlayLayer::get() && Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
+            auto speed = static_cast<float>(Mod::get()->getSettingValue<double>("speed-multiplier"));
+            dt *= std::clamp(speed, 0.5f, 3.0f);
+        }
+        CCScheduler::update(dt);
+    }
 };
