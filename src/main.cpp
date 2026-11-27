@@ -386,35 +386,6 @@ protected:
         FLAlertLayer::create("Interface", "Button color preset changed. New buttons use this color.", "OK")->show();
     }
 
-    void onLoadReplay(CCObject*) {
-        if (!loadRe4Replay()) {
-            FLAlertLayer::create("RE4 import", "Could not load last-replay.re4 from the mod save folder.", "OK")->show();
-            return;
-        }
-        FLAlertLayer::create("RE4 import", fmt::format("Loaded {} input events.", g_re4PlaybackInputs.size()), "OK")->show();
-    }
-
-    void onPlayReplay(CCObject*) {
-        if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
-            FLAlertLayer::create("Replay", "Import last-replay.re4 first.", "OK")->show();
-            return;
-        }
-        if (!PlayLayer::get()) {
-            FLAlertLayer::create("Replay", "Open a level before playback.", "OK")->show();
-            return;
-        }
-        g_re4Frame = 0;
-        g_re4PlaybackCursor = 0;
-        g_re4Playback = true;
-        g_re4Recording = false;
-        this->refreshLabels();
-    }
-
-    void onStopReplay(CCObject*) {
-        g_re4Playback = false;
-        this->refreshLabels();
-    }
-
     void onApplySpeed(CCObject*) {
         auto parsed = numFromString<double>(m_speedInput->getString());
         if (!parsed || *parsed < 0.5 || *parsed > 3.0) {
