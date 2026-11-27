@@ -554,7 +554,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
 class $modify(GDUltimatePlayLayer, PlayLayer) {
     void pushButton(PlayerButton button, bool player1) {
         ++g_cpsPresses;
-        PlayLayer::pushButton(button, player1);
+        if (player1 && m_player1) m_player1->pushButton(button);
+        else if (!player1 && m_player2) m_player2->pushButton(button);
     }
 
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
