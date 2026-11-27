@@ -16,7 +16,8 @@ protected:
         if (!Popup::init(300.f, 218.f)) return false;
         this->setTitle("GD Ultimate Menu");
 
-        auto center = m_mainLayer->getContentSize() / 2.f;
+        auto layerSize = m_mainLayer->getContentSize();
+        auto center = ccp(layerSize.width / 2.f, layerSize.height / 2.f);
         auto menu = CCMenu::create();
         menu->setPosition(center);
         m_mainLayer->addChild(menu);
