@@ -45,6 +45,12 @@ namespace {
     std::vector<Re4Input> g_re4PlaybackInputs;
     size_t g_re4PlaybackCursor = 0;
     bool g_re4Playback = false;
+    PlayerObject* g_gravityTrackedP1 = nullptr;
+    PlayerObject* g_gravityTrackedP2 = nullptr;
+    double g_gravityBaseP1 = 0.0;
+    double g_gravityBaseP2 = 0.0;
+    double g_gravityLastP1 = 0.0;
+    double g_gravityLastP2 = 0.0;
 
     template <class T>
     void writeLE(std::ofstream& out, T value) {
@@ -321,6 +327,9 @@ protected:
         if (m_stepperToggle) m_stepperToggle->setString(g_stepperEnabled ? "Frame Stepper: ON" : "Frame Stepper: OFF");
         if (m_replayPlay) m_replayPlay->setString(g_re4Playback ? "PLAYING .RE4" : "PLAY REPLAY");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
+        if (m_colorCycle) m_colorCycle->setString(fmt::format("BUTTON COLOR: {}", g_buttonColorIndex + 1));
+        if (m_opacityCycle) m_opacityCycle->setString(fmt::format("OPACITY: {}%", static_cast<int>(g_buttonOpacities[g_buttonOpacityIndex]) * 100 / 255));
+        if (m_sizeCycle) m_sizeCycle->setString(fmt::format("SIZE: {}%", static_cast<int>(g_buttonScales[g_buttonScaleIndex] * 100)));
     }
 
     void onToggle(CCObject* sender) {
@@ -504,6 +513,19 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
     void update(float dt) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
+        if (auto pl = PlayLayer::get()) {
+            bool isP1 = this == pl->m_player1;
+            bool isP2 = this == pl->m_player2;
+            if (isP1 || isP2) {
+                auto& tracked = isP1 ? g_gravityTrackedP1 : g_gravityTrackedP2;
+                auto& base = isP1 ? g_gravityBaseP1 : g_gravityBaseP2;
+                auto& last = isP1 ? g_gravityLastP1 : g_gravityLastP2;
+                if (tracked != this) { tracked = this; base = this->m_gravity; last = this->m_gravity; }
+                else if (this->m_gravity != last) base = this->m_gravity;
+                this->m_gravity = Mod::get()->getSettingValue<bool>("low-gravity") ? base * 0.5 : base;
+                last = this->m_gravity;
+            }
+        }
         PlayerObject::update(dt);
     }
 
