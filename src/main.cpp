@@ -3,6 +3,7 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
+#include <Geode/ui/ScrollLayer.hpp>
 
 using namespace geode::prelude;
 
@@ -14,16 +15,23 @@ protected:
     CCMenuItemLabel* m_jumpToggle = nullptr;
     CCMenuItemLabel* m_deathToggle = nullptr;
     CCMenuItemLabel* m_noclipToggle = nullptr;
+    geode::ScrollLayer* m_scroll = nullptr;
 
     bool init() {
-        if (!Popup::init(300.f, 250.f)) return false;
+        if (!Popup::init(390.f, 310.f)) return false;
         this->setTitle("GD Ultimate Menu");
 
         auto layerSize = m_mainLayer->getContentSize();
         auto center = ccp(layerSize.width / 2.f, layerSize.height / 2.f);
+        m_scroll = geode::ScrollLayer::create(CCSize{350.f, 220.f});
+        m_scroll->setPosition({20.f, 58.f});
+        m_scroll->setID("ultimate-menu-scroll"_spr);
+        m_mainLayer->addChild(m_scroll);
+        auto content = m_scroll->m_contentLayer;
+        content->setContentSize({350.f, 390.f});
         auto menu = CCMenu::create();
-        menu->setPosition(center);
-        m_mainLayer->addChild(menu);
+        menu->setPosition({175.f, 195.f});
+        content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
             return CCLabelBMFont::create(text.c_str(), "bigFont.fnt");
@@ -33,48 +41,48 @@ protected:
             menu_selector(UltimateMenuPopup::onToggle));
         m_speedToggle->setTag(0);
         m_speedToggle->setScale(0.55f);
-        m_speedToggle->setPosition({0.f, 65.f});
+        m_speedToggle->setPosition({0.f, 155.f});
         menu->addChild(m_speedToggle);
 
         m_gravityToggle = CCMenuItemLabel::create(makeLabel("Low gravity: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggle));
         m_gravityToggle->setTag(1);
         m_gravityToggle->setScale(0.55f);
-        m_gravityToggle->setPosition({0.f, 30.f});
+        m_gravityToggle->setPosition({0.f, 115.f});
         menu->addChild(m_gravityToggle);
 
         m_jumpToggle = CCMenuItemLabel::create(makeLabel("Jump effect: ON"), this,
             menu_selector(UltimateMenuPopup::onToggle));
         m_jumpToggle->setTag(2);
         m_jumpToggle->setScale(0.55f);
-        m_jumpToggle->setPosition({0.f, -5.f});
+        m_jumpToggle->setPosition({0.f, 75.f});
         menu->addChild(m_jumpToggle);
 
         m_deathToggle = CCMenuItemLabel::create(makeLabel("Death effect: ON"), this,
             menu_selector(UltimateMenuPopup::onToggle));
         m_deathToggle->setTag(3);
         m_deathToggle->setScale(0.55f);
-        m_deathToggle->setPosition({0.f, -40.f});
+        m_deathToggle->setPosition({0.f, 35.f});
         menu->addChild(m_deathToggle);
 
         m_noclipToggle = CCMenuItemLabel::create(makeLabel("NoClip: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggle));
         m_noclipToggle->setTag(4);
         m_noclipToggle->setScale(0.55f);
-        m_noclipToggle->setPosition({0.f, -75.f});
+        m_noclipToggle->setPosition({0.f, -5.f});
         menu->addChild(m_noclipToggle);
 
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
         m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
-        m_speedInput->setPosition({center.x, center.y - 105.f});
+        m_speedInput->setPosition({center.x, 35.f});
         m_speedInput->setScale(0.8f);
-        m_mainLayer->addChild(m_speedInput);
+        content->addChild(m_speedInput);
 
         auto apply = CCMenuItemLabel::create(makeLabel("APPLY SPEED"), this,
             menu_selector(UltimateMenuPopup::onApplySpeed));
         apply->setScale(0.55f);
-        apply->setPosition({0.f, -140.f});
+        apply->setPosition({0.f, -45.f});
         menu->addChild(apply);
 
         this->refreshLabels();
