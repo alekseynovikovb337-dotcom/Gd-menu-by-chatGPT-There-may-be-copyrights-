@@ -389,8 +389,11 @@ protected:
     }
 
     void onPlayReplay(CCObject*) {
-        if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
-            FLAlertLayer::create("Replay", "Import last-replay.re4 first.", "OK")->show();
+        // Use the just-recorded macro directly; exporting a file is optional.
+        if (!g_re4Inputs.empty()) {
+            g_re4PlaybackInputs = g_re4Inputs;
+        } else if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
+            FLAlertLayer::create("Replay", "Record a macro first or load last-replay.re4.", "OK")->show();
             return;
         }
         auto pl = PlayLayer::get();
