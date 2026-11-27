@@ -34,6 +34,10 @@ namespace {
     bool g_hideInLevelButton = false;
     bool g_autoPracticeEnabled = false;
     bool g_hidePlayerEnabled = false;
+    bool g_autoRetryEnabled = false;
+    bool g_autoClickerEnabled = false;
+    float g_autoClickerTimer = 0.f;
+    bool g_autoClickerPressed = false;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
@@ -76,6 +80,8 @@ protected:
     CCMenuItemLabel* m_ghostEffectButton = nullptr;
     CCMenuItemLabel* m_autoPracticeButton = nullptr;
     CCMenuItemLabel* m_hidePlayerButton = nullptr;
+    CCMenuItemLabel* m_autoRetryButton = nullptr;
+    CCMenuItemLabel* m_autoClickerButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -175,6 +181,10 @@ protected:
         m_autoPracticeButton->setTag(18); m_autoPracticeButton->setScale(0.55f); menu->addChild(m_autoPracticeButton);
         m_hidePlayerButton = CCMenuItemLabel::create(makeLabel("HIDE PLAYER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHidePlayer));
         m_hidePlayerButton->setTag(19); m_hidePlayerButton->setScale(0.55f); menu->addChild(m_hidePlayerButton);
+        m_autoRetryButton = CCMenuItemLabel::create(makeLabel("AUTO RETRY: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoRetry));
+        m_autoRetryButton->setTag(20); m_autoRetryButton->setScale(0.55f); menu->addChild(m_autoRetryButton);
+        m_autoClickerButton = CCMenuItemLabel::create(makeLabel("AUTO CLICKER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoClicker));
+        m_autoClickerButton->setTag(21); m_autoClickerButton->setScale(0.55f); menu->addChild(m_autoClickerButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -265,6 +275,8 @@ protected:
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_autoPracticeButton) m_autoPracticeButton->setString(g_autoPracticeEnabled ? "AUTO PRACTICE: ON" : "AUTO PRACTICE: OFF");
         if (m_hidePlayerButton) m_hidePlayerButton->setString(g_hidePlayerEnabled ? "HIDE PLAYER: ON" : "HIDE PLAYER: OFF");
+        if (m_autoRetryButton) m_autoRetryButton->setString(g_autoRetryEnabled ? "AUTO RETRY: ON" : "AUTO RETRY: OFF");
+        if (m_autoClickerButton) m_autoClickerButton->setString(g_autoClickerEnabled ? "AUTO CLICKER: ON" : "AUTO CLICKER: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -383,6 +395,21 @@ protected:
     void onToggleAutoPractice(CCObject*) {
         g_autoPracticeEnabled = !g_autoPracticeEnabled;
         if (auto layer = PlayLayer::get()) layer->togglePracticeMode(g_autoPracticeEnabled);
+        this->refreshLabels();
+    }
+
+    void onToggleAutoRetry(CCObject*) {
+        g_autoRetryEnabled = !g_autoRetryEnabled;
+        this->refreshLabels();
+    }
+
+    void onToggleAutoClicker(CCObject*) {
+        g_autoClickerEnabled = !g_autoClickerEnabled;
+        g_autoClickerTimer = 0.f;
+        if (!g_autoClickerEnabled && g_autoClickerPressed) {
+            if (auto pl = PlayLayer::get(); pl && pl->m_player1) pl->m_player1->releaseButton(PlayerButton::Jump);
+            g_autoClickerPressed = false;
+        }
         this->refreshLabels();
     }
 
@@ -506,6 +533,22 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
         if (auto pl = PlayLayer::get()) {
             bool isP1 = this == pl->m_player1;
             bool isP2 = this == pl->m_player2;
+            if (isP1 && g_autoClickerEnabled) {
+                g_autoClickerTimer += dt;
+                if (g_autoClickerPressed && g_autoClickerTimer >= 0.055f) {
+                    this->releaseButton(PlayerButton::Jump);
+                    g_autoClickerPressed = false;
+                    g_autoClickerTimer = 0.f;
+                } else if (!g_autoClickerPressed && g_autoClickerTimer >= 0.11f) {
+                    this->pushButton(PlayerButton::Jump);
+                    g_autoClickerPressed = true;
+                    g_autoClickerTimer = 0.f;
+                }
+            } else if (isP1 && g_autoClickerPressed) {
+                this->releaseButton(PlayerButton::Jump);
+                g_autoClickerPressed = false;
+                g_autoClickerTimer = 0.f;
+            }
             if (isP1 || isP2) {
                 this->setVisible(!g_hidePlayerEnabled);
                 auto& tracked = isP1 ? g_gravityTrackedP1 : g_gravityTrackedP2;
@@ -566,6 +609,15 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         }
         PlayLayer::update(dt);
     }
+    void onPlayerDied() {
+        PlayLayer::onPlayerDied();
+        if (g_autoRetryEnabled) this->scheduleOnce(schedule_selector(GDUltimatePlayLayer::retryAfterDeath), 0.45f);
+    }
+
+    void retryAfterDeath(float) {
+        if (g_autoRetryEnabled && PlayLayer::get() == this && !m_isPaused) this->resetLevel();
+    }
+
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
             player && (player == m_player1 || player == m_player2)) {
