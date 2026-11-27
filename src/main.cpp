@@ -36,6 +36,8 @@ namespace {
 
 }
 
+static void refreshButtonAppearance();
+
 class UltimateMenuPopup : public geode::Popup {
 protected:
     TextInput* m_speedInput = nullptr;
@@ -140,7 +142,7 @@ protected:
         m_hideButton = CCMenuItemLabel::create(makeLabel("HIDE IN-LEVEL BUTTON: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHideButton));
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
 
-        m_tpsToggle = CCMenuItemLabel::create(makeLabel("TPS BYPASS 240: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
+        m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
         m_tpsApply = CCMenuItemLabel::create(makeLabel("APPLY TPS"), this, menu_selector(UltimateMenuPopup::onApplyTPS));
         m_tpsApply->setTag(43); m_tpsApply->setScale(0.55f); menu->addChild(m_tpsApply);
@@ -216,7 +218,7 @@ protected:
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
-        if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "TPS BYPASS 240: ON" : "TPS BYPASS 240: OFF");
+        if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
         if (m_sliderLimitBypassToggle) m_sliderLimitBypassToggle->setString(g_sliderLimitBypassEnabled ? "SLIDER LIMIT BYPASS: ON" : "SLIDER LIMIT BYPASS: OFF");
@@ -311,8 +313,6 @@ public:
         return nullptr;
     }
 };
-
-static void refreshButtonAppearance();
 
 static void openUltimateMenu() {
     UltimateMenuPopup::create()->show();
