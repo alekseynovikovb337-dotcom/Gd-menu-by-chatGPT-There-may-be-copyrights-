@@ -280,6 +280,8 @@ protected:
         if (!m_itemsMenu) return;
         m_itemsMenu->setVisible(true);
         m_speedInput->setVisible(tab == 0);
+        int row = 0;
+        const float rowY[] = {96.f, 60.f, 24.f, -12.f, -48.f, -84.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
@@ -287,9 +289,13 @@ protected:
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
                            (tab == 1 && tag >= 20 && tag <= 24) ||
                            (tab == 2 && tag >= 30 && tag <= 31) ||
-                           (tab == 4 && tag == 50);
+                           (tab == 4 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
+            if (visible) {
+                item->setPosition({0.f, rowY[std::min(row, 5)]});
+                ++row;
+            }
         }
         const char* hints[] = {
             "Player settings", "RE4: record, save, load and playback",
