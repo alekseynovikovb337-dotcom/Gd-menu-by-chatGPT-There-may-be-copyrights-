@@ -376,10 +376,12 @@ protected:
             FLAlertLayer::create("Replay", "Import last-replay.re4 first.", "OK")->show();
             return;
         }
-        if (!PlayLayer::get()) {
+        auto pl = PlayLayer::get();
+        if (!pl) {
             FLAlertLayer::create("Replay", "Open a level before playback.", "OK")->show();
             return;
         }
+        pl->resetLevel();
         g_re4Frame = 0;
         g_re4PlaybackCursor = 0;
         g_re4Playback = true;
@@ -493,27 +495,12 @@ class $modify(GDUltimatePauseLayer, PauseLayer) {
 
 class $modify(GDUltimatePlayerObject, PlayerObject) {
     bool pushButton(PlayerButton btn) {
-        bool result = PlayerObject::pushButton(btn);
-        if (g_re4Recording) {
-            auto pl = PlayLayer::get();
-            if (pl && (this == pl->m_player1 || this == pl->m_player2)) {
-                g_re4Inputs.push_back({g_re4Frame, 1, static_cast<int32_t>(btn), static_cast<uint8_t>(this == pl->m_player2)});
-            }
-        }
-        return result;
+        return PlayerObject::pushButton(btn);
     }
 
     bool releaseButton(PlayerButton btn) {
-        bool result = PlayerObject::releaseButton(btn);
-        if (g_re4Recording) {
-            auto pl = PlayLayer::get();
-            if (pl && (this == pl->m_player1 || this == pl->m_player2)) {
-                g_re4Inputs.push_back({g_re4Frame, 0, static_cast<int32_t>(btn), static_cast<uint8_t>(this == pl->m_player2)});
-            }
-        }
-        return result;
+        return PlayerObject::releaseButton(btn);
     }
-
     void update(float dt) {
         this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
         this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
@@ -548,19 +535,20 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     void update(float dt) {
         if (g_stepperEnabled && !g_stepRequested) return;
         if (g_stepperEnabled) g_stepRequested = false;
-        PlayLayer::update(dt);
+
+        // Feed recorded input BEFORE the physics tick.
         if (g_re4Playback) {
-            ++g_re4Frame;
             while (g_re4PlaybackCursor < g_re4PlaybackInputs.size() &&
                    g_re4PlaybackInputs[g_re4PlaybackCursor].frame <= g_re4Frame) {
                 auto const& event = g_re4PlaybackInputs[g_re4PlaybackCursor++];
-                auto player = event.player2 ? m_player2 : m_player1;
-                if (player) {
-                    auto button = static_cast<PlayerButton>(event.button);
-                    if (event.down) player->pushButton(button);
-                    else player->releaseButton(button);
-                }
+                this->handleButton(event.down != 0, event.button, event.player2 == 0);
             }
+        }
+
+        PlayLayer::update(dt);
+
+        if (g_re4Playback) {
+            ++g_re4Frame;
             if (g_re4PlaybackCursor >= g_re4PlaybackInputs.size()) g_re4Playback = false;
         }
         if (g_re4Recording) {
@@ -573,7 +561,6 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             recordPhysics(m_player2, true);
         }
     }
-
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         if (Mod::get()->getSettingValue<bool>("noclip-enabled") &&
             player && (player == m_player1 || player == m_player2)) {
@@ -585,6 +572,19 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
 };
 
+class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
+    void handleButton(bool down, int button, bool isPlayer1) {
+        if (g_re4Recording && !g_re4Playback && PlayLayer::get() == this) {
+            g_re4Inputs.push_back({
+                g_re4Frame,
+                static_cast<uint8_t>(down),
+                static_cast<int32_t>(button),
+                static_cast<uint8_t>(!isPlayer1)
+            });
+        }
+        GJBaseGameLayer::handleButton(down, button, isPlayer1);
+    }
+};
 class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
     void update(float dt) {
         if (PlayLayer::get() && Mod::get()->getSettingValue<bool>("speedhack-enabled")) {
