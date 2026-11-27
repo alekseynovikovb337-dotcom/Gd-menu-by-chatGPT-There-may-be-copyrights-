@@ -81,15 +81,16 @@ protected:
 
         auto layerSize = m_mainLayer->getContentSize();
         auto center = ccp(layerSize.width / 2.f, layerSize.height / 2.f);
-        m_scroll = geode::ScrollLayer::create(CCSize{350.f, 220.f});
-        m_scroll->setPosition({20.f, 58.f});
+        // Reserve a fixed footer for the numeric inputs; only the option rows scroll.
+        m_scroll = geode::ScrollLayer::create(CCSize{350.f, 170.f});
+        m_scroll->setPosition({20.f, 94.f});
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 220.f});
+        content->setContentSize({350.f, 400.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 110.f});
+        menu->setPosition({175.f, 290.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
@@ -132,11 +133,11 @@ protected:
         menu->addChild(m_noclipToggle);
 
         m_playerOnlyControls = CCNode::create();
-        content->addChild(m_playerOnlyControls);
+        m_mainLayer->addChild(m_playerOnlyControls, 7);
         m_speedInput = TextInput::create(130.f, "Speed multiplier");
         m_speedInput->setCommonFilter(CommonFilter::Float);
         m_speedInput->setString(fmt::format("{:.2f}", Mod::get()->getSettingValue<double>("speed-multiplier")));
-        m_speedInput->setPosition({175.f, 15.f});
+        m_speedInput->setPosition({center.x, 66.f});
         m_speedInput->setScale(0.8f);
         m_playerOnlyControls->addChild(m_speedInput);
 
@@ -173,11 +174,11 @@ protected:
         m_tpsApply = CCMenuItemLabel::create(makeLabel("APPLY TPS"), this, menu_selector(UltimateMenuPopup::onApplyTPS));
         m_tpsApply->setTag(43); m_tpsApply->setScale(0.55f); menu->addChild(m_tpsApply);
         m_bypassControls = CCNode::create();
-        content->addChild(m_bypassControls);
+        m_mainLayer->addChild(m_bypassControls, 7);
         m_tpsInput = TextInput::create(130.f, "TPS (30-360)");
         m_tpsInput->setCommonFilter(CommonFilter::Int);
         m_tpsInput->setString(fmt::format("{:.0f}", g_customTPS));
-        m_tpsInput->setPosition({175.f, 25.f});
+        m_tpsInput->setPosition({center.x, 66.f});
         m_tpsInput->setScale(0.8f);
         m_bypassControls->addChild(m_tpsInput);
 
@@ -196,11 +197,11 @@ protected:
 
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
-        m_tabHint->setPosition({center.x, 44.f});
+        m_tabHint->setPosition({center.x, 43.f});
         m_mainLayer->addChild(m_tabHint, 5);
 
         auto tabs = CCMenu::create();
-        tabs->setPosition({center.x, 25.f});
+        tabs->setPosition({center.x, 22.f});
         m_mainLayer->addChild(tabs, 6);
         const char* tabNames[] = {"PLAYER", "BYPASS", "INTERFACE"};
         for (int i = 0; i < 3; ++i) {
