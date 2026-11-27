@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
+#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
@@ -80,6 +81,8 @@ protected:
     CCMenuItemLabel* m_noclipToggle = nullptr;
     geode::ScrollLayer* m_scroll = nullptr;
     CCMenuItemLabel* m_recordToggle = nullptr;
+    CCMenu* m_itemsMenu = nullptr;
+    CCLabelBMFont* m_tabHint = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
@@ -94,6 +97,7 @@ protected:
         auto content = m_scroll->m_contentLayer;
         content->setContentSize({350.f, 390.f});
         auto menu = CCMenu::create();
+        m_itemsMenu = menu;
         menu->setPosition({175.f, 195.f});
         content->addChild(menu);
 
@@ -103,35 +107,35 @@ protected:
 
         m_speedToggle = CCMenuItemLabel::create(makeLabel("Speedhack: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggle));
-        m_speedToggle->setTag(0);
+        m_speedToggle->setTag(10);
         m_speedToggle->setScale(0.55f);
         m_speedToggle->setPosition({0.f, 155.f});
         menu->addChild(m_speedToggle);
 
         m_gravityToggle = CCMenuItemLabel::create(makeLabel("Low gravity: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggle));
-        m_gravityToggle->setTag(1);
+        m_gravityToggle->setTag(11);
         m_gravityToggle->setScale(0.55f);
         m_gravityToggle->setPosition({0.f, 115.f});
         menu->addChild(m_gravityToggle);
 
         m_jumpToggle = CCMenuItemLabel::create(makeLabel("Jump effect: ON"), this,
             menu_selector(UltimateMenuPopup::onToggle));
-        m_jumpToggle->setTag(2);
+        m_jumpToggle->setTag(12);
         m_jumpToggle->setScale(0.55f);
         m_jumpToggle->setPosition({0.f, 75.f});
         menu->addChild(m_jumpToggle);
 
         m_deathToggle = CCMenuItemLabel::create(makeLabel("Death effect: ON"), this,
             menu_selector(UltimateMenuPopup::onToggle));
-        m_deathToggle->setTag(3);
+        m_deathToggle->setTag(13);
         m_deathToggle->setScale(0.55f);
         m_deathToggle->setPosition({0.f, 35.f});
         menu->addChild(m_deathToggle);
 
         m_noclipToggle = CCMenuItemLabel::create(makeLabel("NoClip: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggle));
-        m_noclipToggle->setTag(4);
+        m_noclipToggle->setTag(14);
         m_noclipToggle->setScale(0.55f);
         m_noclipToggle->setPosition({0.f, -5.f});
         menu->addChild(m_noclipToggle);
@@ -145,24 +149,72 @@ protected:
 
         auto apply = CCMenuItemLabel::create(makeLabel("APPLY SPEED"), this,
             menu_selector(UltimateMenuPopup::onApplySpeed));
+        apply->setTag(15);
         apply->setScale(0.55f);
         apply->setPosition({0.f, -45.f});
         menu->addChild(apply);
 
         m_recordToggle = CCMenuItemLabel::create(makeLabel("RE4 recording: OFF"), this,
             menu_selector(UltimateMenuPopup::onToggleRecording));
+        m_recordToggle->setTag(20);
         m_recordToggle->setScale(0.55f);
         m_recordToggle->setPosition({0.f, -85.f});
         menu->addChild(m_recordToggle);
 
         auto saveReplay = CCMenuItemLabel::create(makeLabel("SAVE .RE4"), this,
             menu_selector(UltimateMenuPopup::onSaveReplay));
+        saveReplay->setTag(21);
         saveReplay->setScale(0.55f);
         saveReplay->setPosition({0.f, -125.f});
         menu->addChild(saveReplay);
 
+        m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
+        m_tabHint->setScale(0.42f);
+        m_tabHint->setPosition({center.x, 44.f});
+        m_mainLayer->addChild(m_tabHint, 5);
+
+        auto tabs = CCMenu::create();
+        tabs->setPosition({center.x, 25.f});
+        m_mainLayer->addChild(tabs, 6);
+        const char* tabNames[] = {"PLAYER", "REPLAY", "STEPPER", "BYPASS", "INTERFACE"};
+        for (int i = 0; i < 5; ++i) {
+            auto label = CCLabelBMFont::create(tabNames[i], "bigFont.fnt");
+            auto item = CCMenuItemLabel::create(label, this, menu_selector(UltimateMenuPopup::onTab));
+            item->setTag(i);
+            item->setScale(0.36f);
+            item->setPosition({-142.f + i * 71.f, 0.f});
+            tabs->addChild(item);
+        }
+        this->switchTab(0);
         this->refreshLabels();
         return true;
+    }
+
+    void switchTab(int tab) {
+        if (!m_itemsMenu) return;
+        bool hasItems = (tab == 0 || tab == 1);
+        m_itemsMenu->setVisible(hasItems);
+        m_speedInput->setVisible(tab == 0);
+        for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
+            auto item = typeinfo_cast<CCMenuItem*>(child);
+            if (!item) continue;
+            int tag = item->getTag();
+            bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
+                           (tab == 1 && tag >= 20 && tag <= 21);
+            item->setVisible(visible);
+            item->setEnabled(visible);
+        }
+        const char* hints[] = {
+            "Player settings", "Replay Bot: record and export .RE4",
+            "Frame Stepper controls are being implemented",
+            "Bypass controls are being implemented",
+            "Interface: movable button and colors are being implemented"
+        };
+        m_tabHint->setString(hints[std::clamp(tab, 0, 4)]);
+    }
+
+    void onTab(CCObject* sender) {
+        this->switchTab(sender->getTag());
     }
 
     void refreshLabels() {
@@ -176,11 +228,11 @@ protected:
 
     void onToggle(CCObject* sender) {
         switch (sender->getTag()) {
-            case 0: Mod::get()->setSettingValue("speedhack-enabled", !Mod::get()->getSettingValue<bool>("speedhack-enabled")); break;
-            case 1: Mod::get()->setSettingValue("low-gravity", !Mod::get()->getSettingValue<bool>("low-gravity")); break;
-            case 2: Mod::get()->setSettingValue("jump-effect", !Mod::get()->getSettingValue<bool>("jump-effect")); break;
-            case 3: Mod::get()->setSettingValue("death-effect", !Mod::get()->getSettingValue<bool>("death-effect")); break;
-            case 4: Mod::get()->setSettingValue("noclip-enabled", !Mod::get()->getSettingValue<bool>("noclip-enabled")); break;
+            case 10: Mod::get()->setSettingValue("speedhack-enabled", !Mod::get()->getSettingValue<bool>("speedhack-enabled")); break;
+            case 11: Mod::get()->setSettingValue("low-gravity", !Mod::get()->getSettingValue<bool>("low-gravity")); break;
+            case 12: Mod::get()->setSettingValue("jump-effect", !Mod::get()->getSettingValue<bool>("jump-effect")); break;
+            case 13: Mod::get()->setSettingValue("death-effect", !Mod::get()->getSettingValue<bool>("death-effect")); break;
+            case 14: Mod::get()->setSettingValue("noclip-enabled", !Mod::get()->getSettingValue<bool>("noclip-enabled")); break;
         }
         this->refreshLabels();
     }
@@ -259,6 +311,24 @@ class $modify(GDUltimateMenuLayer, MenuLayer) {
         menu->addChild(button);
         menu->updateLayout();
         return true;
+    }
+    void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
+};
+
+
+class $modify(GDUltimatePauseLayer, PauseLayer) {
+    void customSetup() {
+        PauseLayer::customSetup();
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        auto menu = CCMenu::create();
+        if (!menu) return;
+        menu->setPosition({winSize.width - 38.f, winSize.height - 38.f});
+        menu->setZOrder(10000);
+        auto button = createUltimateButton(this, menu_selector(GDUltimatePauseLayer::onOpenUltimateMenu));
+        if (!button) return;
+        button->setScale(0.72f);
+        menu->addChild(button);
+        this->addChild(menu, 10000);
     }
     void onOpenUltimateMenu(CCObject*) { openUltimateMenu(); }
 };
