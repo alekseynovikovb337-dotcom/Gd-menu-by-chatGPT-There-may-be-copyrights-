@@ -556,15 +556,16 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        auto statusLabel = CCLabelBMFont::create("", "bigFont.fnt");
+        auto statusLabel = CCLabelBMFont::create("CPS: 0", "bigFont.fnt");
         if (statusLabel) {
             statusLabel->setID("gd-ultimate-status-label"_spr);
-            statusLabel->setAnchorPoint({1.f, 1.f});
-            statusLabel->setPosition({winSize.width - 12.f, winSize.height - 70.f});
-            statusLabel->setScale(0.42f);
-            statusLabel->setVisible(shouldShowHudLabels());
-            statusLabel->setZOrder(1000);
-            this->addChild(statusLabel, 1000);
+            statusLabel->setAnchorPoint({0.f, 1.f});
+            statusLabel->setPosition({12.f, winSize.height - 80.f});
+            statusLabel->setScale(0.55f);
+            statusLabel->setColor({255, 255, 255});
+            statusLabel->setVisible(true);
+            statusLabel->setZOrder(10000);
+            this->addChild(statusLabel, 10000);
         }
         // Optional in-level menu button.
         if (!g_hideInLevelButton) {
@@ -611,11 +612,13 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         }
         if (auto label = typeinfo_cast<CCLabelBMFont*>(this->getChildByID("gd-ultimate-status-label"_spr))) {
             std::string text;
-            if (g_labelCpsEnabled) text += fmt::format("CPS: {}\\n", g_cpsValue);
-            if (g_labelTpsEnabled) text += fmt::format("TPS: {}\\n", g_tpsBypassEnabled ? static_cast<unsigned>(g_customTPS) : g_tpsValue);
-            if (g_labelSpeedEnabled) text += fmt::format("SPEED: {:.2f}x\\n", Mod::get()->getSettingValue<double>("speed-multiplier"));
+            if (g_labelCpsEnabled) text += fmt::format("CPS: {}\n", g_cpsValue);
+            if (g_labelTpsEnabled) text += fmt::format("TPS: {}\n", g_tpsBypassEnabled ? static_cast<unsigned>(g_customTPS) : g_tpsValue);
+            if (g_labelSpeedEnabled) text += fmt::format("SPEED: {:.2f}x\n", Mod::get()->getSettingValue<double>("speed-multiplier"));
             if (g_labelProgressEnabled && m_level) text += fmt::format("PROGRESS: {}%", static_cast<int>(m_gameState.m_levelTime * 100.f / std::max(1, m_level->m_levelLength)));
-            label->setString(text.c_str());
+            label->setString(text.empty() ? "Labels enabled" : text.c_str());
+            label->setVisible(shouldShowHudLabels());
+            label->setZOrder(10000);
         }
     }
     void destroyPlayer(PlayerObject* player, GameObject* object) {
