@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <vector>
 #include <cmath>
+#include <cmath>
 
 
 using namespace geode::prelude;
@@ -36,6 +37,9 @@ namespace {
     bool g_stepRequested = false;
     unsigned g_buttonColorIndex = 0;
     const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
+    std::vector<Re4Input> g_re4PlaybackInputs;
+    size_t g_re4PlaybackCursor = 0;
+    bool g_re4Playback = false;
 
     template <class T>
     void writeLE(std::ofstream& out, T value) {
@@ -69,10 +73,56 @@ namespace {
         return out.good();
     }
 
+    template <class T>
+    bool readLE(std::ifstream& in, T& value) {
+        in.read(reinterpret_cast<char*>(&value), sizeof(T));
+        return in.good();
+    }
+
+    bool loadRe4Replay() {
+        auto path = Mod::get()->getSaveDir() / "last-replay.re4";
+        std::ifstream in(path, std::ios::binary);
+        if (!in) return false;
+        char magic[3]{};
+        in.read(magic, 3);
+        float fps = 0.f;
+        uint64_t physicsCount = 0;
+        if (!in || std::string(magic, 3) != "RE4" || !readLE(in, fps) ||
+            !std::isfinite(fps) || fps < 1.f || fps > 1000.f ||
+            !readLE(in, physicsCount) || physicsCount > 5000000) return false;
+        for (uint64_t n = 0; n < physicsCount; ++n) {
+            uint64_t frame; float x, y; double accel; uint8_t p2;
+            if (!readLE(in, frame) || !readLE(in, x) || !readLE(in, y) ||
+                !readLE(in, accel) || !readLE(in, p2) ||
+                !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(accel) || p2 > 1) return false;
+        }
+        uint64_t count = 0;
+        if (!readLE(in, count) || count == 0 || count > 5000000) return false;
+        std::vector<Re4Input> parsed;
+        parsed.reserve(static_cast<size_t>(count));
+        uint64_t lastFrame = 0;
+        for (uint64_t n = 0; n < count; ++n) {
+            Re4Input event{};
+            if (!readLE(in, event.frame) || !readLE(in, event.down) ||
+                !readLE(in, event.button) || !readLE(in, event.player2) ||
+                event.down > 1 || event.player2 > 1 || event.button < 0 ||
+                event.button > 16 || (n && event.frame < lastFrame)) return false;
+            lastFrame = event.frame;
+            parsed.push_back(event);
+        }
+        if (in.peek() != std::ifstream::traits_type::eof()) return false;
+        g_re4PlaybackInputs = std::move(parsed);
+        g_re4PlaybackCursor = 0;
+        return true;
+    }
+
     void resetRe4Recorder() {
         g_re4Inputs.clear();
         g_re4Physics.clear();
         g_re4Frame = 0;
+        g_re4PlaybackInputs.clear();
+        g_re4PlaybackCursor = 0;
+        g_re4Playback = false;
     }
 }
 
@@ -176,6 +226,13 @@ protected:
         saveReplay->setPosition({0.f, -125.f});
         menu->addChild(saveReplay);
 
+        m_stepperToggle = CCMenuItemLabel::create(makeLabel("Frame Stepper: OFF"), this, menu_selector(UltimateMenuPopup::onToggleStepper));
+        m_stepperToggle->setTag(30); m_stepperToggle->setScale(0.55f); m_stepperToggle->setPosition({0.f, 115.f}); menu->addChild(m_stepperToggle);
+        m_stepOnce = CCMenuItemLabel::create(makeLabel("STEP +1 FRAME"), this, menu_selector(UltimateMenuPopup::onStepOnce));
+        m_stepOnce->setTag(31); m_stepOnce->setScale(0.55f); m_stepOnce->setPosition({0.f, 65.f}); menu->addChild(m_stepOnce);
+        m_colorCycle = CCMenuItemLabel::create(makeLabel("CYCLE BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
+        m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); m_colorCycle->setPosition({0.f, 115.f}); menu->addChild(m_colorCycle);
+
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
         m_tabHint->setPosition({center.x, 44.f});
@@ -200,23 +257,24 @@ protected:
 
     void switchTab(int tab) {
         if (!m_itemsMenu) return;
-        bool hasItems = (tab == 0 || tab == 1);
-        m_itemsMenu->setVisible(hasItems);
+        m_itemsMenu->setVisible(true);
         m_speedInput->setVisible(tab == 0);
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 20 && tag <= 21);
+                           (tab == 1 && tag >= 20 && tag <= 24) ||
+                           (tab == 2 && tag >= 30 && tag <= 31) ||
+                           (tab == 4 && tag == 50);
             item->setVisible(visible);
             item->setEnabled(visible);
         }
         const char* hints[] = {
-            "Player settings", "Replay Bot: record and export .RE4",
-            "Frame Stepper controls are being implemented",
-            "Bypass controls are being implemented",
-            "Interface: movable button and colors are being implemented"
+            "Player settings", "RE4: record, save, load and playback",
+            "Toggle step mode, then tap STEP +1 FRAME",
+            "Bypasses are queued for compatibility-safe hooks",
+            "Cycle the floating button accent color"
         };
         m_tabHint->setString(hints[std::clamp(tab, 0, 4)]);
     }
@@ -232,6 +290,8 @@ protected:
         m_deathToggle->setString(Mod::get()->getSettingValue<bool>("death-effect") ? "Death effect: ON" : "Death effect: OFF");
         m_noclipToggle->setString(Mod::get()->getSettingValue<bool>("noclip-enabled") ? "NoClip: ON" : "NoClip: OFF");
         if (m_recordToggle) m_recordToggle->setString(g_re4Recording ? "RE4 recording: ON" : "RE4 recording: OFF");
+        if (m_stepperToggle) m_stepperToggle->setString(g_stepperEnabled ? "Frame Stepper: ON" : "Frame Stepper: OFF");
+        if (m_replayPlay) m_replayPlay->setString(g_re4Playback ? "PLAYING .RE4" : "PLAY REPLAY");
     }
 
     void onToggle(CCObject* sender) {
@@ -274,6 +334,50 @@ protected:
         FLAlertLayer::create("RE4 saved", fmt::format("Saved {} inputs to:\n{}", g_re4Inputs.size(), path.string()), "OK")->show();
     }
 
+    void onLoadReplay(CCObject*) {
+        if (!loadRe4Replay()) {
+            FLAlertLayer::create("RE4 import", "Could not load last-replay.re4 from the mod save folder. Check file format and try again.", "OK")->show();
+            return;
+        }
+        FLAlertLayer::create("RE4 import", fmt::format("Loaded {} input events.", g_re4PlaybackInputs.size()), "OK")->show();
+    }
+
+    void onPlayReplay(CCObject*) {
+        if (g_re4PlaybackInputs.empty() && !loadRe4Replay()) {
+            FLAlertLayer::create("Replay", "Import last-replay.re4 first.", "OK")->show();
+            return;
+        }
+        if (!PlayLayer::get()) {
+            FLAlertLayer::create("Replay", "Open a level before playback.", "OK")->show();
+            return;
+        }
+        g_re4Frame = 0;
+        g_re4PlaybackCursor = 0;
+        g_re4Playback = true;
+        g_re4Recording = false;
+        this->refreshLabels();
+    }
+
+    void onStopReplay(CCObject*) {
+        g_re4Playback = false;
+        this->refreshLabels();
+    }
+
+    void onToggleStepper(CCObject*) {
+        g_stepperEnabled = !g_stepperEnabled;
+        g_stepRequested = false;
+        this->refreshLabels();
+    }
+
+    void onStepOnce(CCObject*) {
+        if (g_stepperEnabled) g_stepRequested = true;
+    }
+
+    void onCycleColor(CCObject*) {
+        g_buttonColorIndex = (g_buttonColorIndex + 1) % (sizeof(g_buttonColors) / sizeof(g_buttonColors[0]));
+        FLAlertLayer::create("Interface", "Button color preset changed. New buttons use this color.", "OK")->show();
+    }
+
     void onApplySpeed(CCObject*) {
         auto parsed = numFromString<double>(m_speedInput->getString());
         if (!parsed || *parsed < 0.5 || *parsed > 3.0) {
@@ -306,6 +410,7 @@ static CCMenuItemSpriteExtra* createUltimateButton(CCNode* target, SEL_MenuHandl
     if (!spr) return nullptr;
     auto button = CCMenuItemSpriteExtra::create(spr, target, selector);
     button->setID("gd-ultimate-menu-button"_spr);
+    button->setColor(g_buttonColors[g_buttonColorIndex]);
     return button;
 }
 
@@ -395,7 +500,23 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         return true;
     }
     void update(float dt) {
+        if (g_stepperEnabled && !g_stepRequested) return;
+        if (g_stepperEnabled) g_stepRequested = false;
         PlayLayer::update(dt);
+        if (g_re4Playback) {
+            ++g_re4Frame;
+            while (g_re4PlaybackCursor < g_re4PlaybackInputs.size() &&
+                   g_re4PlaybackInputs[g_re4PlaybackCursor].frame <= g_re4Frame) {
+                auto const& event = g_re4PlaybackInputs[g_re4PlaybackCursor++];
+                auto player = event.player2 ? m_player2 : m_player1;
+                if (player) {
+                    auto button = static_cast<PlayerButton>(event.button);
+                    if (event.down) player->pushButton(button);
+                    else player->releaseButton(button);
+                }
+            }
+            if (g_re4PlaybackCursor >= g_re4PlaybackInputs.size()) g_re4Playback = false;
+        }
         if (g_re4Recording) {
             ++g_re4Frame;
             auto recordPhysics = [this](PlayerObject* player, bool p2) {
