@@ -7,33 +7,42 @@
   "name": "GD Ultimate Menu",
   "version": "v0.1.0",
   "developer": "ChatGPT + user",
-  "description": "A starter Android mod menu for Geometry Dash 2.2081.",
+  "description": "Configurable Geometry Dash mod menu for Android 2.2081.",
   "settings": {
     "speed-multiplier": {
       "type": "float",
       "name": "Speed multiplier",
-      "description": "Planned gameplay setting. Current starter build stores this value only.",
+      "description": "Adjust the speed multiplier. Gameplay hook is still being implemented.",
       "default": 1,
       "min": 0.5,
-      "max": 2
+      "max": 3,
+      "control": {
+        "slider": true
+      }
     },
     "low-gravity": {
       "type": "bool",
       "name": "Low gravity",
-      "description": "Planned gameplay setting. Current starter build stores this toggle only.",
+      "description": "Toggle low gravity. Gameplay effect is still being implemented.",
       "default": false
     },
     "jump-effect": {
       "type": "bool",
       "name": "Jump effect",
-      "description": "Planned visual effect toggle. Current starter build stores this toggle only.",
+      "description": "Toggle the jump visual effect. Effect is still being implemented.",
       "default": true
     },
     "death-effect": {
       "type": "bool",
       "name": "Death effect",
-      "description": "Planned visual effect toggle. Current starter build stores this toggle only.",
+      "description": "Toggle the death visual effect. Effect is still being implemented.",
       "default": true
+    },
+    "speedhack-enabled": {
+      "type": "bool",
+      "name": "Enable Speedhack",
+      "description": "Master switch for the speed multiplier.",
+      "default": false
     }
   }
 }
