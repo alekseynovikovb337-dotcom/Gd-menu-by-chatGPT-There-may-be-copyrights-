@@ -577,6 +577,20 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         return true;
     }
     void update(float dt) {
+        // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
+        if (g_tpsBypassEnabled && !g_tpsInternalTick && !g_stepperEnabled) {
+            g_tpsAccumulator += std::max(0.0f, dt);
+            constexpr double fixedStep = 1.0 / 240.0;
+            int ticks = 0;
+            while (g_tpsAccumulator >= fixedStep && ticks < 8) {
+                g_tpsAccumulator -= fixedStep;
+                g_tpsInternalTick = true;
+                this->update(static_cast<float>(fixedStep));
+                g_tpsInternalTick = false;
+                ++ticks;
+            }
+            return;
+        }
         if (g_stepperEnabled && !g_stepRequested) return;
         if (g_stepperEnabled) g_stepRequested = false;
 
