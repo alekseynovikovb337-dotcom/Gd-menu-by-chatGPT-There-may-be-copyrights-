@@ -68,6 +68,7 @@ protected:
     CCMenuItemLabel* m_towerLevelBypassToggle = nullptr;
     CCMenuItemLabel* m_pauseBufferBypassToggle = nullptr;
     CCMenuItemLabel* m_freeShoppingToggle = nullptr;
+    CCMenuItemLabel* m_instantCompleteButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -174,6 +175,8 @@ protected:
         m_pauseBufferBypassToggle->setTag(45); m_pauseBufferBypassToggle->setScale(0.55f); menu->addChild(m_pauseBufferBypassToggle);
         m_freeShoppingToggle = CCMenuItemLabel::create(makeLabel("FREE SHOPPING: OFF"), this, menu_selector(UltimateMenuPopup::onToggleFreeShopping));
         m_freeShoppingToggle->setTag(46); m_freeShoppingToggle->setScale(0.55f); menu->addChild(m_freeShoppingToggle);
+        m_instantCompleteButton = CCMenuItemLabel::create(makeLabel("INSTANT COMPLETE"), this, menu_selector(UltimateMenuPopup::onInstantComplete));
+        m_instantCompleteButton->setTag(47); m_instantCompleteButton->setScale(0.55f); menu->addChild(m_instantCompleteButton);
 
         m_tabHint = CCLabelBMFont::create("Choose a tab", "bigFont.fnt");
         m_tabHint->setScale(0.42f);
@@ -203,18 +206,18 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 15) ||
-                           (tab == 1 && tag >= 40 && tag <= 46) ||
+                           (tab == 1 && tag >= 40 && tag <= 47) ||
                            (tab == 2 && tag >= 50 && tag <= 53);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
-                item->setPosition({0.f, rowY[std::min(row, 6)]});
+                item->setPosition({0.f, rowY[std::min(row, 7)]});
                 ++row;
             }
         }
@@ -279,6 +282,15 @@ protected:
     void onToggleFreeShopping(CCObject*) {
         g_freeShoppingEnabled = !g_freeShoppingEnabled;
         this->refreshLabels();
+    }
+
+    void onInstantComplete(CCObject*) {
+        auto layer = PlayLayer::get();
+        if (!layer) {
+            FLAlertLayer::create("Instant Complete", "Open a level first.", "OK")->show();
+            return;
+        }
+        layer->levelComplete();
     }
 
     void onToggleTpsBypass(CCObject*) {
