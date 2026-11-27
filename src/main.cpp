@@ -12,6 +12,16 @@
 using namespace geode::prelude;
 
 namespace {
+    bool g_tpsBypassEnabled = false;
+    bool g_tpsInternalTick = false;
+    double g_tpsAccumulator = 0.0;
+    unsigned g_buttonColorIndex = 0;
+    unsigned g_buttonOpacityIndex = 0;
+    unsigned g_buttonScaleIndex = 1;
+    bool g_hideInLevelButton = false;
+    const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
+    const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
+    const ccColor3B g_buttonColors[] = {{255,255,255},{100,220,255},{140,255,140},{255,190,90},{230,130,255},{255,110,130}};
     PlayerObject* g_gravityTrackedP1 = nullptr;
     PlayerObject* g_gravityTrackedP2 = nullptr;
     double g_gravityBaseP1 = 0.0;
