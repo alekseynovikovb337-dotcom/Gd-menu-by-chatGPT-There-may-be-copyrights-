@@ -4,6 +4,7 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/CCScheduler.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <fstream>
 #include <filesystem>
@@ -319,6 +320,7 @@ protected:
         if (m_recordToggle) m_recordToggle->setString(g_re4Recording ? "RE4 recording: ON" : "RE4 recording: OFF");
         if (m_stepperToggle) m_stepperToggle->setString(g_stepperEnabled ? "Frame Stepper: ON" : "Frame Stepper: OFF");
         if (m_replayPlay) m_replayPlay->setString(g_re4Playback ? "PLAYING .RE4" : "PLAY REPLAY");
+        if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
     }
 
     void onToggle(CCObject* sender) {
@@ -402,7 +404,22 @@ protected:
 
     void onCycleColor(CCObject*) {
         g_buttonColorIndex = (g_buttonColorIndex + 1) % (sizeof(g_buttonColors) / sizeof(g_buttonColors[0]));
-        FLAlertLayer::create("Interface", "Button color preset changed. New buttons use this color.", "OK")->show();
+    }
+
+    void onCycleOpacity(CCObject*) {
+        g_buttonOpacityIndex = (g_buttonOpacityIndex + 1) % (sizeof(g_buttonOpacities) / sizeof(g_buttonOpacities[0]));
+    }
+
+    void onCycleSize(CCObject*) {
+        g_buttonScaleIndex = (g_buttonScaleIndex + 1) % (sizeof(g_buttonScales) / sizeof(g_buttonScales[0]));
+    }
+
+    void onToggleHideButton(CCObject*) {
+        g_hideInLevelButton = !g_hideInLevelButton;
+        if (auto pl = PlayLayer::get()) {
+            if (auto node = pl->getChildByID("gd-ultimate-game-menu"_spr)) node->setVisible(!g_hideInLevelButton);
+        }
+        this->refreshLabels();
     }
 
     void onApplySpeed(CCObject*) {
@@ -438,6 +455,8 @@ static CCMenuItemSpriteExtra* createUltimateButton(CCNode* target, SEL_MenuHandl
     auto button = CCMenuItemSpriteExtra::create(spr, target, selector);
     button->setID("gd-ultimate-menu-button"_spr);
     button->setColor(g_buttonColors[g_buttonColorIndex]);
+    button->setOpacity(g_buttonOpacities[g_buttonOpacityIndex]);
+    button->setScale(g_buttonScales[g_buttonScaleIndex]);
     return button;
 }
 
@@ -466,7 +485,6 @@ class $modify(GDUltimatePauseLayer, PauseLayer) {
         menu->setZOrder(10000);
         auto button = createUltimateButton(this, menu_selector(GDUltimatePauseLayer::onOpenUltimateMenu));
         if (!button) return;
-        button->setScale(0.72f);
         menu->addChild(button);
         this->addChild(menu, 10000);
     }
@@ -513,6 +531,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         resetRe4Recorder();
         g_re4Recording = false;
+        if (g_hideInLevelButton) return true;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         auto menu = CCMenu::create();
         if (!menu) return true;
