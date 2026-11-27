@@ -35,6 +35,9 @@ namespace {
     bool g_re4Recording = false;
     bool g_stepperEnabled = false;
     bool g_stepRequested = false;
+    bool g_tpsBypassEnabled = false;
+    bool g_tpsInternalTick = false;
+    double g_tpsAccumulator = 0.0;
     unsigned g_buttonColorIndex = 0;
     unsigned g_buttonOpacityIndex = 0;
     unsigned g_buttonScaleIndex = 1;
@@ -156,6 +159,8 @@ protected:
     CCMenuItemLabel* m_opacityCycle = nullptr;
     CCMenuItemLabel* m_sizeCycle = nullptr;
     CCMenuItemLabel* m_hideButton = nullptr;
+    CCMenuItemLabel* m_tpsToggle = nullptr;
+    CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
         if (!Popup::init(390.f, 310.f)) return false;
