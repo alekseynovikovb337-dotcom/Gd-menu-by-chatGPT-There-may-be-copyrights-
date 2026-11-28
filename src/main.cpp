@@ -741,12 +741,6 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
 
         return true;
     }
-    void toggleFlipped(bool p0, bool p1) {
-        if (g_noMirrorPortalEnabled) return;
-        if (g_instantMirrorPortalEnabled) p1 = true;
-        GJBaseGameLayer::toggleFlipped(p0, p1);
-    }
-
     void updateVisibility(float dt) {
         auto audio = FMODAudioEngine::get();
         float oldPulse = audio ? audio->m_pulse1 : 0.f;
@@ -881,6 +875,10 @@ class $modify(GDUltimateSliderLimitBypass, SliderTouchLogic) {
 };
 
 class $modify(GDUltimateFreeShopping, GameStatsManager) {
+    void recountSpecialStats() {
+        if (!g_chestKeyBypassEnabled) GameStatsManager::recountSpecialStats();
+    }
+
     bool purchaseItem(int index) {
         if (!g_freeShoppingEnabled) return GameStatsManager::purchaseItem(index);
         auto item = this->getStoreItem(index);
@@ -905,6 +903,12 @@ class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
 
 
 class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
+    void toggleFlipped(bool p0, bool p1) {
+        if (g_noMirrorPortalEnabled) return;
+        if (g_instantMirrorPortalEnabled) p1 = true;
+        GJBaseGameLayer::toggleFlipped(p0, p1);
+    }
+
     void updateCamera(float delta) {
         if (g_noCameraShakeEnabled) {
             m_gameState.m_cameraShakeFactor = 0.f;
@@ -951,8 +955,5 @@ class $modify(GDUltimateSecretRewardsLayer, SecretRewardsLayer) {
         SecretRewardsLayer::onGoldChest(sender);
         GameStatsManager::sharedState()->setStat("43", keys);
         if (m_goldKeysLabel) m_goldKeysLabel->setString(fmt::format("{}", keys).c_str());
-    }
-    void recountSpecialStats() {
-        if (!g_chestKeyBypassEnabled) SecretRewardsLayer::recountSpecialStats();
     }
 };
