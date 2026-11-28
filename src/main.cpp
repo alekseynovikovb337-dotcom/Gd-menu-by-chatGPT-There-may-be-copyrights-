@@ -708,6 +708,21 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
 
         return true;
     }
+    void updateVisibility(float dt) {
+        auto audio = FMODAudioEngine::get();
+        float oldPulse = audio ? audio->m_pulse1 : 0.f;
+        float oldScale = m_audioEffectsLayer ? m_audioEffectsLayer->m_audioScale : 0.f;
+        if (g_noOrbPulseEnabled) {
+            if (audio) audio->m_pulse1 = 0.7f;
+            if (m_audioEffectsLayer) m_audioEffectsLayer->m_audioScale = 0.7f;
+        }
+        PlayLayer::updateVisibility(dt);
+        if (g_noOrbPulseEnabled) {
+            if (audio) audio->m_pulse1 = oldPulse;
+            if (m_audioEffectsLayer) m_audioEffectsLayer->m_audioScale = oldScale;
+        }
+    }
+
     void update(float dt) {
         if (g_cheatIndicatorLabel) {
             bool active = Mod::get()->getSettingValue<bool>("speedhack-enabled") ||
@@ -828,5 +843,28 @@ class $modify(GDUltimateSpeedhackScheduler, cocos2d::CCScheduler) {
             dt *= std::clamp(speed, 0.5f, 3.0f);
         }
         CCScheduler::update(dt);
+    }
+};
+
+
+class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
+    void updateCamera(float delta) {
+        if (g_noCameraShakeEnabled) {
+            m_gameState.m_cameraShakeFactor = 0.f;
+            m_gameState.m_cameraShakeEnabled = false;
+        }
+        GJBaseGameLayer::updateCamera(delta);
+    }
+};
+
+class $modify(GDUltimateHardStreak, HardStreak) {
+    void appendQuad(CCPoint const* vertices, ccColor4F const& color) {
+        if (g_solidWaveTrailEnabled && color.a * 255.f < this->getOpacity()) return;
+        HardStreak::appendQuad(vertices, color);
+    }
+
+    void updateStroke(float dt) {
+        if (g_solidWaveTrailEnabled) this->setBlendFunc({GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA});
+        HardStreak::updateStroke(dt);
     }
 };
