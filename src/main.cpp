@@ -150,10 +150,10 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 900.f});
+        content->setContentSize({350.f, 800.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 0.f});
+        menu->setPosition({175.f, 650.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
@@ -343,7 +343,7 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {850.f, 818.f, 786.f, 754.f, 722.f, 690.f, 658.f, 626.f, 594.f, 562.f, 530.f, 498.f, 466.f, 434.f, 402.f, 370.f, 338.f, 306.f, 274.f, 242.f, 210.f, 178.f, 146.f, 114.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f, -316.f, -348.f, -380.f, -412.f, -444.f, -476.f, -508.f, -540.f, -572.f, -604.f, -636.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
