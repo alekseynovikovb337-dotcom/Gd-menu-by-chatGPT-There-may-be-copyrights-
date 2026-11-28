@@ -61,6 +61,12 @@ namespace {
     bool g_fastChestsEnabled = false;
     bool g_chestKeyBypassEnabled = false;
     bool g_autoCollectCoinsEnabled = false;
+    bool g_noDashFireEnabled = false;
+    bool g_noRobotFireEnabled = false;
+    bool g_noShipFireEnabled = false;
+    bool g_noRespawnBlinkEnabled = false;
+    bool g_noWavePulseEnabled = false;
+    bool g_noObjectGlowEnabled = false;
     std::vector<EffectGameObject*> g_levelCoins;
     CCLabelBMFont* g_cheatIndicatorLabel = nullptr;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
@@ -121,6 +127,12 @@ protected:
     CCMenuItemLabel* m_fastChestsButton = nullptr;
     CCMenuItemLabel* m_chestBypassButton = nullptr;
     CCMenuItemLabel* m_autoCoinsButton = nullptr;
+    CCMenuItemLabel* m_noDashFireButton = nullptr;
+    CCMenuItemLabel* m_noRobotFireButton = nullptr;
+    CCMenuItemLabel* m_noShipFireButton = nullptr;
+    CCMenuItemLabel* m_noRespawnBlinkButton = nullptr;
+    CCMenuItemLabel* m_noWavePulseButton = nullptr;
+    CCMenuItemLabel* m_noObjectGlowButton = nullptr;
     CCMenuItemLabel* m_cheatIndicatorButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
@@ -136,10 +148,10 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 760.f});
+        content->setContentSize({350.f, 1000.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 470.f});
+        menu->setPosition({175.f, 630.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
@@ -255,6 +267,18 @@ protected:
         m_chestBypassButton->setTag(34); m_chestBypassButton->setScale(0.55f); menu->addChild(m_chestBypassButton);
         m_autoCoinsButton = CCMenuItemLabel::create(makeLabel("AUTO COLLECT COINS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoCoins));
         m_autoCoinsButton->setTag(35); m_autoCoinsButton->setScale(0.55f); menu->addChild(m_autoCoinsButton);
+        m_noDashFireButton = CCMenuItemLabel::create(makeLabel("NO DASH FIRE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoDashFire));
+        m_noDashFireButton->setTag(36); m_noDashFireButton->setScale(0.55f); menu->addChild(m_noDashFireButton);
+        m_noRobotFireButton = CCMenuItemLabel::create(makeLabel("NO ROBOT FIRE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoRobotFire));
+        m_noRobotFireButton->setTag(37); m_noRobotFireButton->setScale(0.55f); menu->addChild(m_noRobotFireButton);
+        m_noShipFireButton = CCMenuItemLabel::create(makeLabel("NO SHIP FIRE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoShipFire));
+        m_noShipFireButton->setTag(38); m_noShipFireButton->setScale(0.55f); menu->addChild(m_noShipFireButton);
+        m_noRespawnBlinkButton = CCMenuItemLabel::create(makeLabel("NO RESPAWN BLINK: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoRespawnBlink));
+        m_noRespawnBlinkButton->setTag(39); m_noRespawnBlinkButton->setScale(0.55f); menu->addChild(m_noRespawnBlinkButton);
+        m_noWavePulseButton = CCMenuItemLabel::create(makeLabel("NO WAVE PULSE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoWavePulse));
+        m_noWavePulseButton->setTag(40); m_noWavePulseButton->setScale(0.55f); menu->addChild(m_noWavePulseButton);
+        m_noObjectGlowButton = CCMenuItemLabel::create(makeLabel("NO OBJECT GLOW: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoObjectGlow));
+        m_noObjectGlowButton->setTag(41); m_noObjectGlowButton->setScale(0.55f); menu->addChild(m_noObjectGlowButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -310,19 +334,19 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f, -316.f, -348.f, -380.f, -412.f, -444.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f, -316.f, -348.f, -380.f, -412.f, -444.f, -476.f, -508.f, -540.f, -572.f, -604.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 18 && tag <= 35) ||
+                           (tab == 1 && tag >= 18 && tag <= 41) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 54);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
-                item->setPosition({0.f, rowY[std::min(row, 17)]});
+                item->setPosition({0.f, rowY[std::min(row, 22)]});
                 ++row;
             }
         }
@@ -362,6 +386,12 @@ protected:
         if (m_fastChestsButton) m_fastChestsButton->setString(g_fastChestsEnabled ? "FAST CHESTS: ON" : "FAST CHESTS: OFF");
         if (m_chestBypassButton) m_chestBypassButton->setString(g_chestKeyBypassEnabled ? "CHEST KEY BYPASS: ON" : "CHEST KEY BYPASS: OFF");
         if (m_autoCoinsButton) m_autoCoinsButton->setString(g_autoCollectCoinsEnabled ? "AUTO COLLECT COINS: ON" : "AUTO COLLECT COINS: OFF");
+        if (m_noDashFireButton) m_noDashFireButton->setString(g_noDashFireEnabled ? "NO DASH FIRE: ON" : "NO DASH FIRE: OFF");
+        if (m_noRobotFireButton) m_noRobotFireButton->setString(g_noRobotFireEnabled ? "NO ROBOT FIRE: ON" : "NO ROBOT FIRE: OFF");
+        if (m_noShipFireButton) m_noShipFireButton->setString(g_noShipFireEnabled ? "NO SHIP FIRE: ON" : "NO SHIP FIRE: OFF");
+        if (m_noRespawnBlinkButton) m_noRespawnBlinkButton->setString(g_noRespawnBlinkEnabled ? "NO RESPAWN BLINK: ON" : "NO RESPAWN BLINK: OFF");
+        if (m_noWavePulseButton) m_noWavePulseButton->setString(g_noWavePulseEnabled ? "NO WAVE PULSE: ON" : "NO WAVE PULSE: OFF");
+        if (m_noObjectGlowButton) m_noObjectGlowButton->setString(g_noObjectGlowEnabled ? "NO OBJECT GLOW: ON" : "NO OBJECT GLOW: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -513,6 +543,12 @@ protected:
     void onToggleFastChests(CCObject*) { g_fastChestsEnabled = !g_fastChestsEnabled; this->refreshLabels(); }
     void onToggleChestBypass(CCObject*) { g_chestKeyBypassEnabled = !g_chestKeyBypassEnabled; this->refreshLabels(); }
     void onToggleAutoCoins(CCObject*) { g_autoCollectCoinsEnabled = !g_autoCollectCoinsEnabled; this->refreshLabels(); }
+    void onToggleNoDashFire(CCObject*) { g_noDashFireEnabled = !g_noDashFireEnabled; this->refreshLabels(); }
+    void onToggleNoRobotFire(CCObject*) { g_noRobotFireEnabled = !g_noRobotFireEnabled; this->refreshLabels(); }
+    void onToggleNoShipFire(CCObject*) { g_noShipFireEnabled = !g_noShipFireEnabled; this->refreshLabels(); }
+    void onToggleNoRespawnBlink(CCObject*) { g_noRespawnBlinkEnabled = !g_noRespawnBlinkEnabled; this->refreshLabels(); }
+    void onToggleNoWavePulse(CCObject*) { g_noWavePulseEnabled = !g_noWavePulseEnabled; this->refreshLabels(); }
+    void onToggleNoObjectGlow(CCObject*) { g_noObjectGlowEnabled = !g_noObjectGlowEnabled; this->refreshLabels(); }
 
     void onToggleAutoRetry(CCObject*) {
         g_autoRetryEnabled = !g_autoRetryEnabled;
@@ -698,10 +734,21 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
             }
         }
         PlayerObject::update(dt);
+        if (g_noDashFireEnabled && this->m_dashFireSprite) this->m_dashFireSprite->setVisible(false);
+        if (g_noRobotFireEnabled) {
+            if (this->m_robotFire) this->m_robotFire->setVisible(false);
+            if (this->m_robotBurstParticles) this->m_robotBurstParticles->setVisible(false);
+        }
+        if (g_noShipFireEnabled && this->m_shipStreak) this->m_shipStreak->setVisible(false);
         if (g_noRotationEnabled) {
             this->setRotation(0.f);
             if (this->m_iconSprite) this->m_iconSprite->setRotation(0.f);
         }
+    }
+
+    void playSpawnEffect() {
+        if (g_noRespawnBlinkEnabled) return;
+        PlayerObject::playSpawnEffect();
     }
 
     void playDeathEffect() {
@@ -760,6 +807,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         PlayLayer::addObject(obj);
         if (obj && (obj->m_objectType == GameObjectType::UserCoin || obj->m_objectType == GameObjectType::SecretCoin))
             g_levelCoins.push_back(static_cast<EffectGameObject*>(obj));
+        if (obj && g_noObjectGlowEnabled) obj->m_hasNoGlow = true;
     }
 
     void update(float dt) {
@@ -920,6 +968,7 @@ class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
 
 class $modify(GDUltimateHardStreak, HardStreak) {
     void updateStroke(float dt) {
+        if (g_noWavePulseEnabled) this->m_pulseSize = 1.f;
         if (g_solidWaveTrailEnabled) this->setBlendFunc({GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA});
         HardStreak::updateStroke(dt);
     }
