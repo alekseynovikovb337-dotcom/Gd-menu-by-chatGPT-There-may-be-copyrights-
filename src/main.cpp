@@ -222,6 +222,11 @@ protected:
         m_ghostEffectButton->setTag(17);
         m_ghostEffectButton->setScale(0.55f);
         menu->addChild(m_ghostEffectButton);
+        auto restartLevelButton = CCMenuItemLabel::create(makeLabel("RESTART LEVEL"), this,
+            menu_selector(UltimateMenuPopup::onRestartLevel));
+        restartLevelButton->setTag(58);
+        restartLevelButton->setScale(0.55f);
+        menu->addChild(restartLevelButton);
 
         m_colorCycle = CCMenuItemLabel::create(makeLabel("BUTTON COLOR"), this, menu_selector(UltimateMenuPopup::onCycleColor));
         m_colorCycle->setTag(50); m_colorCycle->setScale(0.55f); menu->addChild(m_colorCycle);
@@ -343,7 +348,7 @@ protected:
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
-            bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
+            bool visible = (tab == 0 && ((tag >= 10 && tag <= 17) || tag == 58)) ||
                            (tab == 1 && ((tag >= 18 && tag <= 39) || tag == 56 || tag == 57)) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 55);
@@ -465,6 +470,15 @@ protected:
         g_ghostEffectEnabled = !g_ghostEffectEnabled;
         layer->toggleGhostEffect(g_ghostEffectEnabled);
         this->refreshLabels();
+    }
+
+    void onRestartLevel(CCObject*) {
+        auto layer = PlayLayer::get();
+        if (!layer) {
+            FLAlertLayer::create("Restart Level", "Open a level first.", "OK")->show();
+            return;
+        }
+        layer->resetLevel();
     }
 
     void onInstantComplete(CCObject*) {
