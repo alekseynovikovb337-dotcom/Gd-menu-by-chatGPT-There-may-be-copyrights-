@@ -139,7 +139,7 @@ protected:
         content->setContentSize({350.f, 760.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 290.f});
+        menu->setPosition({175.f, 470.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
