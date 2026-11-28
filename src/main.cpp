@@ -9,6 +9,8 @@
 #include <Geode/modify/LevelAreaInnerLayer.hpp>
 #include <Geode/modify/GameStatsManager.hpp>
 #include <Geode/modify/UILayer.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
+#include <Geode/modify/HardStreak.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <vector>
 #include <cmath>
@@ -47,6 +49,11 @@ namespace {
     bool g_platformerOriginalP2 = false;
     bool g_waveTrailEnabled = true;
     bool g_cheatIndicatorEnabled = true;
+    bool g_noParticlesEnabled = false;
+    bool g_noRotationEnabled = false;
+    bool g_noCameraShakeEnabled = false;
+    bool g_noOrbPulseEnabled = false;
+    bool g_solidWaveTrailEnabled = false;
     CCLabelBMFont* g_cheatIndicatorLabel = nullptr;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
@@ -96,6 +103,11 @@ protected:
     CCMenuItemLabel* m_noGlowButton = nullptr;
     CCMenuItemLabel* m_forcePlatformerButton = nullptr;
     CCMenuItemLabel* m_waveTrailButton = nullptr;
+    CCMenuItemLabel* m_noParticlesButton = nullptr;
+    CCMenuItemLabel* m_noRotationButton = nullptr;
+    CCMenuItemLabel* m_noShakeButton = nullptr;
+    CCMenuItemLabel* m_noOrbPulseButton = nullptr;
+    CCMenuItemLabel* m_solidWaveButton = nullptr;
     CCMenuItemLabel* m_cheatIndicatorButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
@@ -111,7 +123,7 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 400.f});
+        content->setContentSize({350.f, 600.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
         menu->setPosition({175.f, 290.f});
@@ -210,6 +222,16 @@ protected:
         m_forcePlatformerButton->setTag(24); m_forcePlatformerButton->setScale(0.55f); menu->addChild(m_forcePlatformerButton);
         m_waveTrailButton = CCMenuItemLabel::create(makeLabel("WAVE TRAIL: ON"), this, menu_selector(UltimateMenuPopup::onToggleWaveTrail));
         m_waveTrailButton->setTag(25); m_waveTrailButton->setScale(0.55f); menu->addChild(m_waveTrailButton);
+        m_noParticlesButton = CCMenuItemLabel::create(makeLabel("NO PARTICLES: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoParticles));
+        m_noParticlesButton->setTag(26); m_noParticlesButton->setScale(0.55f); menu->addChild(m_noParticlesButton);
+        m_noRotationButton = CCMenuItemLabel::create(makeLabel("NO ROTATION: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoRotation));
+        m_noRotationButton->setTag(27); m_noRotationButton->setScale(0.55f); menu->addChild(m_noRotationButton);
+        m_noShakeButton = CCMenuItemLabel::create(makeLabel("NO CAMERA SHAKE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoShake));
+        m_noShakeButton->setTag(28); m_noShakeButton->setScale(0.55f); menu->addChild(m_noShakeButton);
+        m_noOrbPulseButton = CCMenuItemLabel::create(makeLabel("NO ORB PULSE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoOrbPulse));
+        m_noOrbPulseButton->setTag(29); m_noOrbPulseButton->setScale(0.55f); menu->addChild(m_noOrbPulseButton);
+        m_solidWaveButton = CCMenuItemLabel::create(makeLabel("SOLID WAVE TRAIL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleSolidWave));
+        m_solidWaveButton->setTag(30); m_solidWaveButton->setScale(0.55f); menu->addChild(m_solidWaveButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -265,19 +287,19 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 18 && tag <= 25) ||
+                           (tab == 1 && tag >= 18 && tag <= 30) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 54);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
-                item->setPosition({0.f, rowY[std::min(row, 7)]});
+                item->setPosition({0.f, rowY[std::min(row, 12)]});
                 ++row;
             }
         }
@@ -307,6 +329,11 @@ protected:
         if (m_noGlowButton) m_noGlowButton->setString(g_noPlayerGlowEnabled ? "NO PLAYER GLOW: ON" : "NO PLAYER GLOW: OFF");
         if (m_forcePlatformerButton) m_forcePlatformerButton->setString(g_forcePlatformerEnabled ? "FORCE PLATFORMER: ON" : "FORCE PLATFORMER: OFF");
         if (m_waveTrailButton) m_waveTrailButton->setString(g_waveTrailEnabled ? "WAVE TRAIL: ON" : "WAVE TRAIL: OFF");
+        if (m_noParticlesButton) m_noParticlesButton->setString(g_noParticlesEnabled ? "NO PARTICLES: ON" : "NO PARTICLES: OFF");
+        if (m_noRotationButton) m_noRotationButton->setString(g_noRotationEnabled ? "NO ROTATION: ON" : "NO ROTATION: OFF");
+        if (m_noShakeButton) m_noShakeButton->setString(g_noCameraShakeEnabled ? "NO CAMERA SHAKE: ON" : "NO CAMERA SHAKE: OFF");
+        if (m_noOrbPulseButton) m_noOrbPulseButton->setString(g_noOrbPulseEnabled ? "NO ORB PULSE: ON" : "NO ORB PULSE: OFF");
+        if (m_solidWaveButton) m_solidWaveButton->setString(g_solidWaveTrailEnabled ? "SOLID WAVE TRAIL: ON" : "SOLID WAVE TRAIL: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -448,6 +475,12 @@ protected:
         this->refreshLabels();
     }
 
+    void onToggleNoParticles(CCObject*) { g_noParticlesEnabled = !g_noParticlesEnabled; this->refreshLabels(); }
+    void onToggleNoRotation(CCObject*) { g_noRotationEnabled = !g_noRotationEnabled; this->refreshLabels(); }
+    void onToggleNoShake(CCObject*) { g_noCameraShakeEnabled = !g_noCameraShakeEnabled; this->refreshLabels(); }
+    void onToggleNoOrbPulse(CCObject*) { g_noOrbPulseEnabled = !g_noOrbPulseEnabled; this->refreshLabels(); }
+    void onToggleSolidWave(CCObject*) { g_solidWaveTrailEnabled = !g_solidWaveTrailEnabled; this->refreshLabels(); }
+
     void onToggleAutoRetry(CCObject*) {
         g_autoRetryEnabled = !g_autoRetryEnabled;
         this->refreshLabels();
@@ -583,8 +616,8 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
         return PlayerObject::releaseButton(btn);
     }
     void update(float dt) {
-        this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect");
-        this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect");
+        this->m_hasGroundParticles = Mod::get()->getSettingValue<bool>("jump-effect") && !g_noParticlesEnabled;
+        this->m_hasShipParticles = Mod::get()->getSettingValue<bool>("jump-effect") && !g_noParticlesEnabled;
         if (this->m_ghostTrail) this->m_ghostTrail->setVisible(!g_noTrailEnabled);
         if (this->m_waveTrail) this->m_waveTrail->setVisible(!g_noTrailEnabled && g_waveTrailEnabled);
         this->m_hasGlow = !g_noPlayerGlowEnabled;
@@ -632,6 +665,10 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
             }
         }
         PlayerObject::update(dt);
+        if (g_noRotationEnabled) {
+            this->setRotation(0.f);
+            if (this->m_iconSprite) this->m_iconSprite->setRotation(0.f);
+        }
     }
 
     void playDeathEffect() {
