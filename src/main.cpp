@@ -150,7 +150,7 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 1000.f});
+        content->setContentSize({350.f, 800.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
         menu->setPosition({175.f, 650.f});
@@ -280,9 +280,9 @@ protected:
         m_noRespawnBlinkButton = CCMenuItemLabel::create(makeLabel("NO RESPAWN BLINK: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoRespawnBlink));
         m_noRespawnBlinkButton->setTag(39); m_noRespawnBlinkButton->setScale(0.55f); menu->addChild(m_noRespawnBlinkButton);
         m_noWavePulseButton = CCMenuItemLabel::create(makeLabel("NO WAVE PULSE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoWavePulse));
-        m_noWavePulseButton->setTag(40); m_noWavePulseButton->setScale(0.55f); menu->addChild(m_noWavePulseButton);
+        m_noWavePulseButton->setTag(56); m_noWavePulseButton->setScale(0.55f); menu->addChild(m_noWavePulseButton);
         m_noObjectGlowButton = CCMenuItemLabel::create(makeLabel("NO OBJECT GLOW: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoObjectGlow));
-        m_noObjectGlowButton->setTag(41); m_noObjectGlowButton->setScale(0.55f); menu->addChild(m_noObjectGlowButton);
+        m_noObjectGlowButton->setTag(57); m_noObjectGlowButton->setScale(0.55f); menu->addChild(m_noObjectGlowButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -344,7 +344,7 @@ protected:
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 18 && tag <= 41) ||
+                           (tab == 1 && ((tag >= 18 && tag <= 39) || tag == 56 || tag == 57)) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 55);
             item->setVisible(visible);
