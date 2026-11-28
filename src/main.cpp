@@ -343,7 +343,8 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {850.f, 818.f, 786.f, 754.f, 722.f, 690.f, 658.f, 626.f, 594.f, 562.f, 530.f, 498.f, 466.f, 434.f, 402.f, 370.f, 338.f, 306.f, 274.f, 242.f, 210.f, 178.f, 146.f, 114.f};
+        // Start rows inside the initial viewport, then continue downward.
+        const float rowY[] = {160.f, 128.f, 96.f, 64.f, 32.f, 0.f, -32.f, -64.f, -96.f, -128.f, -160.f, -192.f, -224.f, -256.f, -288.f, -320.f, -352.f, -384.f, -416.f, -448.f, -480.f, -512.f, -544.f, -576.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
