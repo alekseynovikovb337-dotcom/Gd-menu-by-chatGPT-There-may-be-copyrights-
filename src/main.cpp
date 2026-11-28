@@ -741,12 +741,12 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
             }
         }
         PlayerObject::update(dt);
-        if (g_noDashFireEnabled && this->m_dashFireSprite) this->m_dashFireSprite->setVisible(false);
-        if (g_noRobotFireEnabled) {
+        if ((g_noDashFireEnabled || g_noParticlesEnabled) && this->m_dashFireSprite) this->m_dashFireSprite->setVisible(false);
+        if (g_noRobotFireEnabled || g_noParticlesEnabled) {
             if (this->m_robotFire) this->m_robotFire->setVisible(false);
             if (this->m_robotBurstParticles) this->m_robotBurstParticles->setVisible(false);
         }
-        if (g_noShipFireEnabled && this->m_shipStreak) this->m_shipStreak->setVisible(false);
+        if ((g_noShipFireEnabled || g_noParticlesEnabled) && this->m_shipStreak) this->m_shipStreak->setVisible(false);
         if (g_noRotationEnabled) {
             this->setRotation(0.f);
             if (this->m_iconSprite) this->m_iconSprite->setRotation(0.f);
@@ -766,6 +766,7 @@ class $modify(GDUltimatePlayerObject, PlayerObject) {
 
 class $modify(GDUltimatePlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        g_levelCoins.clear();
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         g_cheatIndicatorLabel = CCLabelBMFont::create("GD MENU: CHEATS ACTIVE", "bigFont.fnt");
@@ -860,6 +861,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
                 }
             }
         }
+        g_levelCoins.clear();
     }
 
     void retryAfterDeath(float) {
