@@ -11,6 +11,8 @@
 #include <Geode/modify/UILayer.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/HardStreak.hpp>
+#include <Geode/modify/RewardUnlockLayer.hpp>
+#include <Geode/modify/SecretRewardsLayer.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <vector>
 #include <cmath>
@@ -54,6 +56,12 @@ namespace {
     bool g_noCameraShakeEnabled = false;
     bool g_noOrbPulseEnabled = false;
     bool g_solidWaveTrailEnabled = false;
+    bool g_noMirrorPortalEnabled = false;
+    bool g_instantMirrorPortalEnabled = false;
+    bool g_fastChestsEnabled = false;
+    bool g_chestKeyBypassEnabled = false;
+    bool g_autoCollectCoinsEnabled = false;
+    std::vector<EffectGameObject*> g_levelCoins;
     CCLabelBMFont* g_cheatIndicatorLabel = nullptr;
     const GLubyte g_buttonOpacities[] = {255, 210, 165, 120};
     const float g_buttonScales[] = {0.55f, 0.72f, 0.88f, 1.0f};
@@ -108,6 +116,11 @@ protected:
     CCMenuItemLabel* m_noShakeButton = nullptr;
     CCMenuItemLabel* m_noOrbPulseButton = nullptr;
     CCMenuItemLabel* m_solidWaveButton = nullptr;
+    CCMenuItemLabel* m_noMirrorButton = nullptr;
+    CCMenuItemLabel* m_instantMirrorButton = nullptr;
+    CCMenuItemLabel* m_fastChestsButton = nullptr;
+    CCMenuItemLabel* m_chestBypassButton = nullptr;
+    CCMenuItemLabel* m_autoCoinsButton = nullptr;
     CCMenuItemLabel* m_cheatIndicatorButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
@@ -123,7 +136,7 @@ protected:
         m_scroll->setID("ultimate-menu-scroll"_spr);
         m_mainLayer->addChild(m_scroll);
         auto content = m_scroll->m_contentLayer;
-        content->setContentSize({350.f, 600.f});
+        content->setContentSize({350.f, 760.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
         menu->setPosition({175.f, 290.f});
@@ -232,6 +245,16 @@ protected:
         m_noOrbPulseButton->setTag(29); m_noOrbPulseButton->setScale(0.55f); menu->addChild(m_noOrbPulseButton);
         m_solidWaveButton = CCMenuItemLabel::create(makeLabel("SOLID WAVE TRAIL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleSolidWave));
         m_solidWaveButton->setTag(30); m_solidWaveButton->setScale(0.55f); menu->addChild(m_solidWaveButton);
+        m_noMirrorButton = CCMenuItemLabel::create(makeLabel("NO MIRROR PORTAL: OFF"), this, menu_selector(UltimateMenuPopup::onToggleNoMirror));
+        m_noMirrorButton->setTag(31); m_noMirrorButton->setScale(0.55f); menu->addChild(m_noMirrorButton);
+        m_instantMirrorButton = CCMenuItemLabel::create(makeLabel("INSTANT MIRROR: OFF"), this, menu_selector(UltimateMenuPopup::onToggleInstantMirror));
+        m_instantMirrorButton->setTag(32); m_instantMirrorButton->setScale(0.55f); menu->addChild(m_instantMirrorButton);
+        m_fastChestsButton = CCMenuItemLabel::create(makeLabel("FAST CHESTS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleFastChests));
+        m_fastChestsButton->setTag(33); m_fastChestsButton->setScale(0.55f); menu->addChild(m_fastChestsButton);
+        m_chestBypassButton = CCMenuItemLabel::create(makeLabel("CHEST KEY BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleChestBypass));
+        m_chestBypassButton->setTag(34); m_chestBypassButton->setScale(0.55f); menu->addChild(m_chestBypassButton);
+        m_autoCoinsButton = CCMenuItemLabel::create(makeLabel("AUTO COLLECT COINS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoCoins));
+        m_autoCoinsButton->setTag(35); m_autoCoinsButton->setScale(0.55f); menu->addChild(m_autoCoinsButton);
 
         m_tpsToggle = CCMenuItemLabel::create(makeLabel("CUSTOM TPS BYPASS: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTpsBypass));
         m_tpsToggle->setTag(40); m_tpsToggle->setScale(0.55f); menu->addChild(m_tpsToggle);
@@ -287,19 +310,19 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f};
+        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f, -316.f, -348.f, -380.f, -412.f, -444.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
             int tag = item->getTag();
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
-                           (tab == 1 && tag >= 18 && tag <= 30) ||
+                           (tab == 1 && tag >= 18 && tag <= 35) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
                            (tab == 3 && tag >= 50 && tag <= 54);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
-                item->setPosition({0.f, rowY[std::min(row, 12)]});
+                item->setPosition({0.f, rowY[std::min(row, 17)]});
                 ++row;
             }
         }
@@ -334,6 +357,11 @@ protected:
         if (m_noShakeButton) m_noShakeButton->setString(g_noCameraShakeEnabled ? "NO CAMERA SHAKE: ON" : "NO CAMERA SHAKE: OFF");
         if (m_noOrbPulseButton) m_noOrbPulseButton->setString(g_noOrbPulseEnabled ? "NO ORB PULSE: ON" : "NO ORB PULSE: OFF");
         if (m_solidWaveButton) m_solidWaveButton->setString(g_solidWaveTrailEnabled ? "SOLID WAVE TRAIL: ON" : "SOLID WAVE TRAIL: OFF");
+        if (m_noMirrorButton) m_noMirrorButton->setString(g_noMirrorPortalEnabled ? "NO MIRROR PORTAL: ON" : "NO MIRROR PORTAL: OFF");
+        if (m_instantMirrorButton) m_instantMirrorButton->setString(g_instantMirrorPortalEnabled ? "INSTANT MIRROR: ON" : "INSTANT MIRROR: OFF");
+        if (m_fastChestsButton) m_fastChestsButton->setString(g_fastChestsEnabled ? "FAST CHESTS: ON" : "FAST CHESTS: OFF");
+        if (m_chestBypassButton) m_chestBypassButton->setString(g_chestKeyBypassEnabled ? "CHEST KEY BYPASS: ON" : "CHEST KEY BYPASS: OFF");
+        if (m_autoCoinsButton) m_autoCoinsButton->setString(g_autoCollectCoinsEnabled ? "AUTO COLLECT COINS: ON" : "AUTO COLLECT COINS: OFF");
         if (m_tpsToggle) m_tpsToggle->setString(g_tpsBypassEnabled ? "CUSTOM TPS BYPASS: ON" : "CUSTOM TPS BYPASS: OFF");
         if (m_tpsApply) m_tpsApply->setString(fmt::format("APPLY TPS ({:.0f})", g_customTPS).c_str());
         if (m_mainLevelBypassToggle) m_mainLevelBypassToggle->setString(g_mainLevelBypassEnabled ? "MAIN LEVEL BYPASS: ON" : "MAIN LEVEL BYPASS: OFF");
@@ -480,6 +508,11 @@ protected:
     void onToggleNoShake(CCObject*) { g_noCameraShakeEnabled = !g_noCameraShakeEnabled; this->refreshLabels(); }
     void onToggleNoOrbPulse(CCObject*) { g_noOrbPulseEnabled = !g_noOrbPulseEnabled; this->refreshLabels(); }
     void onToggleSolidWave(CCObject*) { g_solidWaveTrailEnabled = !g_solidWaveTrailEnabled; this->refreshLabels(); }
+    void onToggleNoMirror(CCObject*) { g_noMirrorPortalEnabled = !g_noMirrorPortalEnabled; this->refreshLabels(); }
+    void onToggleInstantMirror(CCObject*) { g_instantMirrorPortalEnabled = !g_instantMirrorPortalEnabled; this->refreshLabels(); }
+    void onToggleFastChests(CCObject*) { g_fastChestsEnabled = !g_fastChestsEnabled; this->refreshLabels(); }
+    void onToggleChestBypass(CCObject*) { g_chestKeyBypassEnabled = !g_chestKeyBypassEnabled; this->refreshLabels(); }
+    void onToggleAutoCoins(CCObject*) { g_autoCollectCoinsEnabled = !g_autoCollectCoinsEnabled; this->refreshLabels(); }
 
     void onToggleAutoRetry(CCObject*) {
         g_autoRetryEnabled = !g_autoRetryEnabled;
@@ -708,6 +741,12 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
 
         return true;
     }
+    void toggleFlipped(bool p0, bool p1) {
+        if (g_noMirrorPortalEnabled) return;
+        if (g_instantMirrorPortalEnabled) p1 = true;
+        GJBaseGameLayer::toggleFlipped(p0, p1);
+    }
+
     void updateVisibility(float dt) {
         auto audio = FMODAudioEngine::get();
         float oldPulse = audio ? audio->m_pulse1 : 0.f;
@@ -721,6 +760,12 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             if (audio) audio->m_pulse1 = oldPulse;
             if (m_audioEffectsLayer) m_audioEffectsLayer->m_audioScale = oldScale;
         }
+    }
+
+    void addObject(GameObject* obj) {
+        PlayLayer::addObject(obj);
+        if (obj && (obj->m_objectType == GameObjectType::UserCoin || obj->m_objectType == GameObjectType::SecretCoin))
+            g_levelCoins.push_back(static_cast<EffectGameObject*>(obj));
     }
 
     void update(float dt) {
@@ -751,6 +796,18 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         }
         PlayLayer::update(dt);
     }
+    void resetLevel() {
+        PlayLayer::resetLevel();
+        if (g_autoCollectCoinsEnabled) {
+            for (auto coin : g_levelCoins) {
+                if (coin && coin->m_isVisible) {
+                    this->pickupItem(coin);
+                    this->destroyObject(coin);
+                }
+            }
+        }
+    }
+
     void retryAfterDeath(float) {
         if (g_autoRetryEnabled && PlayLayer::get() == this && !m_isPaused) this->resetLevel();
     }
@@ -866,5 +923,36 @@ class $modify(GDUltimateHardStreak, HardStreak) {
     void updateStroke(float dt) {
         if (g_solidWaveTrailEnabled) this->setBlendFunc({GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA});
         HardStreak::updateStroke(dt);
+    }
+};
+
+
+class $modify(GDUltimateRewardUnlockLayer, RewardUnlockLayer) {
+    bool showCollectReward(GJRewardItem* item) {
+        auto result = RewardUnlockLayer::showCollectReward(item);
+        if (g_fastChestsEnabled) this->showCloseButton();
+        return result;
+    }
+};
+
+class $modify(GDUltimateSecretRewardsLayer, SecretRewardsLayer) {
+    void onSelectItem(CCObject* sender) {
+        if (!g_chestKeyBypassEnabled) return SecretRewardsLayer::onSelectItem(sender);
+        auto keys = GameStatsManager::sharedState()->getStat("21");
+        GameStatsManager::sharedState()->setStat("21", 999999);
+        SecretRewardsLayer::onSelectItem(sender);
+        GameStatsManager::sharedState()->setStat("21", keys);
+        if (m_keysLabel) m_keysLabel->setString(fmt::format("{}", keys).c_str());
+    }
+    void onGoldChest(CCObject* sender) {
+        if (!g_chestKeyBypassEnabled) return SecretRewardsLayer::onGoldChest(sender);
+        auto keys = GameStatsManager::sharedState()->getStat("43");
+        GameStatsManager::sharedState()->setStat("43", 999999);
+        SecretRewardsLayer::onGoldChest(sender);
+        GameStatsManager::sharedState()->setStat("43", keys);
+        if (m_goldKeysLabel) m_goldKeysLabel->setString(fmt::format("{}", keys).c_str());
+    }
+    void recountSpecialStats() {
+        if (!g_chestKeyBypassEnabled) SecretRewardsLayer::recountSpecialStats();
     }
 };
