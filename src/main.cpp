@@ -153,7 +153,11 @@ protected:
         content->setContentSize({350.f, 800.f});
         auto menu = CCMenu::create();
         m_itemsMenu = menu;
-        menu->setPosition({175.f, 650.f});
+        // Give the scroll layer a real full-height child to track/cull.
+        // CCMenu's automatic bounds can be tiny/empty, so ScrollLayer may
+        // hide the entire menu while the finger is moving.
+        menu->setContentSize({350.f, 800.f});
+        menu->setPosition({175.f, 400.f});
         content->addChild(menu);
 
         auto makeLabel = [](std::string const& text) {
@@ -343,7 +347,9 @@ protected:
         m_playerOnlyControls->setVisible(tab == 0);
         if (m_bypassControls) m_bypassControls->setVisible(tab == 1);
         int row = 0;
-        const float rowY[] = {100.f, 68.f, 36.f, 4.f, -28.f, -60.f, -92.f, -124.f, -156.f, -188.f, -220.f, -252.f, -284.f, -316.f, -348.f, -380.f, -412.f, -444.f, -476.f, -508.f, -540.f, -572.f, -604.f, -636.f};
+        // Keep the same absolute row positions as before, but center the
+        // menu in the 800px content area so its bounding box spans the scroll.
+        const float rowY[] = {350.f, 318.f, 286.f, 254.f, 222.f, 190.f, 158.f, 126.f, 94.f, 62.f, 30.f, -2.f, -34.f, -66.f, -98.f, -130.f, -162.f, -194.f, -226.f, -258.f, -290.f, -322.f, -354.f, -386.f};
         for (auto child : CCArrayExt<CCNode*>(m_itemsMenu->getChildren())) {
             auto item = typeinfo_cast<CCMenuItem*>(child);
             if (!item) continue;
