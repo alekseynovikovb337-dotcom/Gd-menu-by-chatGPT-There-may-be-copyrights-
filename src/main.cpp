@@ -826,7 +826,12 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
                 g_autoRetryEnabled || g_autoClickerEnabled || g_noTrailEnabled ||
                 g_noPlayerGlowEnabled || g_forcePlatformerEnabled || g_freeShoppingEnabled ||
                 g_hidePlayerEnabled || g_waveTrailEnabled == false || g_mainLevelBypassEnabled ||
-                g_sliderLimitBypassEnabled || g_towerLevelBypassEnabled || g_pauseBufferBypassEnabled;
+                g_sliderLimitBypassEnabled || g_towerLevelBypassEnabled || g_pauseBufferBypassEnabled ||
+                g_noParticlesEnabled || g_noRotationEnabled || g_noCameraShakeEnabled || g_noOrbPulseEnabled ||
+                g_solidWaveTrailEnabled || g_noMirrorPortalEnabled || g_instantMirrorPortalEnabled ||
+                g_fastChestsEnabled || g_chestKeyBypassEnabled || g_autoCollectCoinsEnabled ||
+                g_noDashFireEnabled || g_noRobotFireEnabled || g_noShipFireEnabled ||
+                g_noRespawnBlinkEnabled || g_noWavePulseEnabled || g_noObjectGlowEnabled || g_tintOnDeathEnabled;
             g_cheatIndicatorLabel->setVisible(g_cheatIndicatorEnabled && active);
         }
         // Fixed 240 Hz simulation ticks, capped to avoid a runaway catch-up loop.
