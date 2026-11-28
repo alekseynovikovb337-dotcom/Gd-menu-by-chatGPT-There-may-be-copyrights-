@@ -794,7 +794,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
         PlayLayer::resetLevel();
         if (g_autoCollectCoinsEnabled) {
             for (auto coin : g_levelCoins) {
-                if (coin && coin->m_isVisible) {
+                if (coin && coin->isVisible()) {
                     this->pickupItem(coin);
                     this->destroyObject(coin);
                 }
