@@ -919,11 +919,6 @@ class $modify(GDUltimateBaseGameLayer, GJBaseGameLayer) {
 };
 
 class $modify(GDUltimateHardStreak, HardStreak) {
-    void appendQuad(CCPoint const* vertices, ccColor4F const& color) {
-        if (g_solidWaveTrailEnabled && color.a * 255.f < this->getOpacity()) return;
-        HardStreak::appendQuad(vertices, color);
-    }
-
     void updateStroke(float dt) {
         if (g_solidWaveTrailEnabled) this->setBlendFunc({GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA});
         HardStreak::updateStroke(dt);
