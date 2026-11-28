@@ -359,6 +359,9 @@ protected:
                 ++row;
             }
         }
+        // Reset the viewport to the top whenever switching tabs; otherwise
+        // the scroll layer can remain at the bottom and show an empty list.
+        if (m_scroll) m_scroll->scrollToTop();
         const char* hints[] = {"Player settings", "Extra cheat options", "TPS, level and pause bypasses", "Floating button appearance"};
         m_tabHint->setString(hints[std::clamp(tab, 0, 3)]);
     }
