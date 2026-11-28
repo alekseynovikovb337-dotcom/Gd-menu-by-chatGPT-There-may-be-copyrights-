@@ -51,6 +51,7 @@ namespace {
     bool g_platformerOriginalP2 = false;
     bool g_waveTrailEnabled = true;
     bool g_cheatIndicatorEnabled = true;
+    bool g_tintOnDeathEnabled = false;
     bool g_noParticlesEnabled = false;
     bool g_noRotationEnabled = false;
     bool g_noCameraShakeEnabled = false;
@@ -134,6 +135,7 @@ protected:
     CCMenuItemLabel* m_noWavePulseButton = nullptr;
     CCMenuItemLabel* m_noObjectGlowButton = nullptr;
     CCMenuItemLabel* m_cheatIndicatorButton = nullptr;
+    CCMenuItemLabel* m_tintOnDeathButton = nullptr;
     CCNode* m_playerOnlyControls = nullptr;
 
     bool init() {
@@ -231,6 +233,8 @@ protected:
         m_hideButton->setTag(53); m_hideButton->setScale(0.55f); menu->addChild(m_hideButton);
         m_cheatIndicatorButton = CCMenuItemLabel::create(makeLabel("CHEAT INDICATOR: ON"), this, menu_selector(UltimateMenuPopup::onToggleCheatIndicator));
         m_cheatIndicatorButton->setTag(54); m_cheatIndicatorButton->setScale(0.55f); menu->addChild(m_cheatIndicatorButton);
+        m_tintOnDeathButton = CCMenuItemLabel::create(makeLabel("TINT ON DEATH: OFF"), this, menu_selector(UltimateMenuPopup::onToggleTintOnDeath));
+        m_tintOnDeathButton->setTag(55); m_tintOnDeathButton->setScale(0.55f); menu->addChild(m_tintOnDeathButton);
         m_autoPracticeButton = CCMenuItemLabel::create(makeLabel("AUTO PRACTICE: OFF"), this, menu_selector(UltimateMenuPopup::onToggleAutoPractice));
         m_autoPracticeButton->setTag(18); m_autoPracticeButton->setScale(0.55f); menu->addChild(m_autoPracticeButton);
         m_hidePlayerButton = CCMenuItemLabel::create(makeLabel("HIDE PLAYER: OFF"), this, menu_selector(UltimateMenuPopup::onToggleHidePlayer));
@@ -342,7 +346,7 @@ protected:
             bool visible = (tab == 0 && tag >= 10 && tag <= 17) ||
                            (tab == 1 && tag >= 18 && tag <= 41) ||
                            (tab == 2 && tag >= 40 && tag <= 47) ||
-                           (tab == 3 && tag >= 50 && tag <= 54);
+                           (tab == 3 && tag >= 50 && tag <= 55);
             item->setVisible(visible);
             item->setEnabled(visible);
             if (visible) {
@@ -368,6 +372,7 @@ protected:
         if (m_ghostEffectButton) m_ghostEffectButton->setString(g_ghostEffectEnabled ? "GHOST EFFECT: ON" : "GHOST EFFECT: OFF");
         if (m_hideButton) m_hideButton->setString(g_hideInLevelButton ? "HIDE IN-LEVEL BUTTON: ON" : "HIDE IN-LEVEL BUTTON: OFF");
         if (m_cheatIndicatorButton) m_cheatIndicatorButton->setString(g_cheatIndicatorEnabled ? "CHEAT INDICATOR: ON" : "CHEAT INDICATOR: OFF");
+        if (m_tintOnDeathButton) m_tintOnDeathButton->setString(g_tintOnDeathEnabled ? "TINT ON DEATH: ON" : "TINT ON DEATH: OFF");
         if (m_autoPracticeButton) m_autoPracticeButton->setString(g_autoPracticeEnabled ? "AUTO PRACTICE: ON" : "AUTO PRACTICE: OFF");
         if (m_hidePlayerButton) m_hidePlayerButton->setString(g_hidePlayerEnabled ? "HIDE PLAYER: ON" : "HIDE PLAYER: OFF");
         if (m_autoRetryButton) m_autoRetryButton->setString(g_autoRetryEnabled ? "AUTO RETRY: ON" : "AUTO RETRY: OFF");
@@ -573,6 +578,8 @@ protected:
         }
         this->refreshLabels();
     }
+
+    void onToggleTintOnDeath(CCObject*) { g_tintOnDeathEnabled = !g_tintOnDeathEnabled; this->refreshLabels(); }
 
     void onToggleCheatIndicator(CCObject*) {
         g_cheatIndicatorEnabled = !g_cheatIndicatorEnabled;
@@ -859,6 +866,7 @@ class $modify(GDUltimatePlayLayer, PlayLayer) {
             player && (player == m_player1 || player == m_player2)) {
             return;
         }
+        if (g_tintOnDeathEnabled && player && (player == m_player1 || player == m_player2)) player->setColor({255, 80, 80});
         PlayLayer::destroyPlayer(player, object);
         if (g_autoRetryEnabled && player && (player == m_player1 || player == m_player2)) {
             this->scheduleOnce(schedule_selector(GDUltimatePlayLayer::retryAfterDeath), 0.45f);
